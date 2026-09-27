@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH=$PATH:/opt/homebrew/bin
+source "$(cd "$(dirname "$0")"; pwd)/../../lib/cpu.sh"
 
 curPath=`pwd`
 
@@ -101,7 +102,13 @@ Install_lib()
 
 		$serverPath/php/$version/bin/phpize
 		./configure --with-php-config=$serverPath/php/$version/bin/php-config $OPTIONS
-		make clean && make && make install && make clean
+
+		# ICU 75+ headers need C++17, but older PHP forces -std=c++11 after CXXFLAGS
+		icu_major=$(pkg-config --modversion icu-uc 2>/dev/null | cut -d. -f1)
+		if [ "$icu_major" != "" ] && [ "$icu_major" -ge "75" ] && [ -f Makefile ];then
+			sed -i 's/-std=c++11/-std=c++17/g' Makefile
+		fi
+		make clean && make -j${cpuCore} && make install && make clean
 		
 		if [ -d $sourcePath/php${version} ];then
 			cd ${sourcePath} && rm -rf $sourcePath/php${version}

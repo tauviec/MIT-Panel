@@ -64,6 +64,17 @@ if [ "${action}" == "install" ] && [ -d ${serverPath}/php/${type} ];then
 	# Instal ekstensi umum
 	echo "install PHP${type} extend start"
 
+	# gcc 14+ turns old-C warnings into errors, gcc 15 defaults to C23 and
+	# ICU 75+ needs C++17: older extensions and their libraries predate all of it
+	gcc_major=$(gcc -dumpversion 2>/dev/null | cut -d. -f1)
+	if [ "$sysName" != "Darwin" ] && [ "$gcc_major" != "" ] && [ "$gcc_major" -ge "14" ]; then
+		export CFLAGS="-O2 -fPIC -Wno-error=incompatible-pointer-types -Wno-error=implicit-function-declaration -Wno-error=int-conversion -Wno-error=implicit-int"
+		if [ "${type}" -le "81" ]; then
+			export CFLAGS="$CFLAGS -std=gnu11"
+		fi
+		export CXXFLAGS="-O2 -fPIC -std=c++17"
+	fi
+
 	# cd ${rootPath}/plugins/php/versions/common  && bash iconv.sh install 53
 	# cd ${rootPath}/plugins/php/versions/common  && bash intl.sh install 73
 	# cd ${rootPath}/plugins/php/versions/common  && bash gd.sh install 56

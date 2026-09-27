@@ -153,18 +153,30 @@ else
 		OPTIONS="$OPTIONS --with-openssl=${OPENSSL_11_DIR}"
 	fi
 
+	# bundled libxml2 2.9: when the system one is missing/too old (yum), or
+	# 2.12+ (Ubuntu 24.10+, Debian 13, Fedora 40+), whose API PHP 8.0 predates
+	libxml_ver=$(pkg-config --modversion libxml-2.0 2>/dev/null)
+	LOCAL_LIBXML=false
 	if [ -f /usr/bin/yum ]; then
-		libxml_ver=$(pkg-config --modversion libxml-2.0 2>/dev/null)
-		if [ "$?" != "0" ] || [ "$(printf '%s\n' "2.9.4" "$libxml_ver" | sort -V | head -n1)" != "2.9.4" ]; then
-			cd ${rootPath}/plugins/php/lib && /bin/bash libxml2.sh
-			export PKG_CONFIG_PATH=${serverPath}/lib/libxml2/lib/pkgconfig:$PKG_CONFIG_PATH
+		if [ "$libxml_ver" == "" ] || [ "$(printf '%s\n' "2.9.4" "$libxml_ver" | sort -V | head -n1)" != "2.9.4" ]; then
+			LOCAL_LIBXML=true
 		fi
+	fi
+	if [ "$libxml_ver" != "" ] && [ "$(printf '%s\n' "2.12.0" "$libxml_ver" | sort -V | head -n1)" == "2.12.0" ]; then
+		LOCAL_LIBXML=true
+	fi
+	if [ "$LOCAL_LIBXML" == "true" ]; then
+		cd ${rootPath}/plugins/php/lib && /bin/bash libxml2.sh
+		export PKG_CONFIG_PATH=${serverPath}/lib/libxml2/lib/pkgconfig:$PKG_CONFIG_PATH
+		# the system has a different libxml2 soname, so php must find this one
+		export LDFLAGS="$LDFLAGS -Wl,-rpath,${serverPath}/lib/libxml2/lib"
 	fi
 fi
 
 if [ ! -d $serverPath/php/${PHP_VER} ];then
 	if [ "$sysName" != "Darwin" ]; then
-		export CFLAGS="-w -O2 -fPIC -Wno-error"
+		# gcc 15 defaults to C23, where "f()" means no arguments; PHP 8.0 predates that
+		export CFLAGS="-w -O2 -fPIC -Wno-error -std=gnu11"
 		export CXXFLAGS="-w -O2 -fPIC -Wno-error"
 	fi
 
