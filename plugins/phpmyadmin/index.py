@@ -137,6 +137,17 @@ def contentReplace(content):
 
     cfg = getCfg()
 
+    # phpMyAdmin is often installed before the database: when the chosen one
+    # is missing but the other is installed, point at the installed one
+    choose_dir = {'mysql': 'mysql', 'mysql-apt': 'mysql-apt',
+                  'mysql-yum': 'mysql-yum'}.get(cfg['choose'], 'mariadb')
+    if not os.path.exists(service_path + '/' + choose_dir):
+        for db in ['mariadb', 'mysql', 'mysql-apt', 'mysql-yum']:
+            if os.path.exists(service_path + '/' + db):
+                cfg['choose'] = db
+                setCfg('choose', db)
+                break
+
     if cfg['choose'] == "mysql":
         content = content.replace('{$CHOOSE_DB}', 'mysql')
         content = content.replace('{$CHOOSE_DB_DIR}', 'mysql')
@@ -191,9 +202,23 @@ def returnCfg():
     return data
 
 
+def refreshDbConf(conf_inc):
+    # config.inc.php written before MariaDB/MySQL was installed points at a
+    # socket that does not exist: rewrite it for the database now installed
+    if not os.path.exists(conf_inc):
+        return
+    m = re.search(r"^\$cfg\['Servers'\]\[\$i\]\['socket'\]\s*=\s*'([^']+)'",
+                  mit.readFile(conf_inc), re.M)
+    if m and not os.path.exists(os.path.dirname(m.group(1))):
+        content = contentReplace(mit.readFile(getPluginDir() + '/conf/config.inc.php'))
+        if m.group(1) not in content:
+            mit.writeFile(conf_inc, content)
+
+
 def status():
     conf = getConf()
     conf_inc = getServerDir() + "/" + getCfg()["path"] + '/config.inc.php'
+    refreshDbConf(conf_inc)
     if os.path.exists(conf) and os.path.exists(conf_inc):
         return 'start'
     return 'stop'

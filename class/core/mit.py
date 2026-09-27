@@ -1280,9 +1280,55 @@ def isUpdateLocalSoft():
     return False
 
 
-def hasPwd(password):
-    import crypt
-    return crypt.crypt(password, password)
+def hasPwd(password, salt=None):
+    # htpasswd entry in Apache's $apr1$ (MD5) format, understood by Apache and
+    # Nginx; the "crypt" module it used before was removed in Python 3.13
+    import hashlib
+    import random
+    import string
+
+    itoa64 = './0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+    if salt is None:
+        salt = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits)
+                       for _ in range(8))
+    pw = password.encode('utf-8')
+    sb = salt.encode('utf-8')
+    magic = b'$apr1$'
+
+    final = hashlib.md5(pw + sb + pw).digest()
+    ctx = pw + magic + sb
+    i = len(pw)
+    while i > 0:
+        ctx += final[:min(16, i)]
+        i -= 16
+    i = len(pw)
+    while i:
+        ctx += b'\x00' if i & 1 else pw[:1]
+        i >>= 1
+    final = hashlib.md5(ctx).digest()
+
+    for i in range(1000):
+        ctx = pw if i & 1 else final
+        if i % 3:
+            ctx += sb
+        if i % 7:
+            ctx += pw
+        ctx += final if i & 1 else pw
+        final = hashlib.md5(ctx).digest()
+
+    def to64(v, n):
+        out = ''
+        for _ in range(n):
+            out += itoa64[v & 0x3f]
+            v >>= 6
+        return out
+
+    f = final
+    result = ''
+    for a, b, c in ((0, 6, 12), (1, 7, 13), (2, 8, 14), (3, 9, 15), (4, 10, 5)):
+        result += to64((f[a] << 16) | (f[b] << 8) | f[c], 4)
+    result += to64(f[11], 2)
+    return '$apr1$' + salt + '$' + result
 
 
 def getTimeout(url):
