@@ -737,6 +737,8 @@ function openPhpmyadmin(name, username, password) {
     }
 
     var home_page = rdata.data;
+    // same host as the panel: the server's own IP may be an unreachable public/NAT address
+    home_page = home_page.replace(/^(https?:\/\/)[^\/:]+/, '$1' + window.location.hostname);
     home_page = home_page.replace("http://", "http://" + phpmyadmin_cfg['username'] + ":" + phpmyadmin_cfg['password'] + "@");
     $("#toPHPMyAdmin").attr('action', home_page);
 

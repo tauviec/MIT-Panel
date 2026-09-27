@@ -50,7 +50,10 @@ function homePage(){
             layer.msg(rdata.msg,{icon:0,time:2000,shade: [0.3, '#000']});
             return;
         }
-        var con = '<button class="btn btn-default btn-sm" onclick="window.open(\'' + rdata.data + '\')">Homepage</button>';
+        // open it on the host the panel is reached through: the server's own
+        // idea of its IP may be a public/NAT address unreachable from here
+        var url = rdata.data.replace(/^(https?:\/\/)[^\/:]+/, '$1' + window.location.hostname);
+        var con = '<button class="btn btn-default btn-sm" onclick="window.open(\'' + url + '\')">Homepage</button>';
         $(".soft-man-con").html(con);
     });
 }
