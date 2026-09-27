@@ -37,19 +37,37 @@ if ($build -lt 19041) {
 }
 
 # --- WSL -------------------------------------------------------------------
-$wslReady = $false
-try {
-    wsl.exe --status *> $null
-    if ($LASTEXITCODE -eq 0) { $wslReady = $true }
-} catch { }
-
-if (-not $wslReady) {
-    Info "Memasang WSL2 + $Distro (butuh restart Windows setelah ini)..."
-    wsl.exe --install -d $Distro --no-launch
+# "wsl --status" also fails when the features are on but the WSL2 kernel is
+# missing, so check the Windows features themselves instead.
+function FeatureOn($name) {
+    try { (Get-WindowsOptionalFeature -Online -FeatureName $name).State -eq "Enabled" } catch { $false }
+}
+$needRestart = $false
+foreach ($f in "Microsoft-Windows-Subsystem-Linux", "VirtualMachinePlatform") {
+    if (-not (FeatureOn $f)) {
+        Info "Mengaktifkan fitur Windows $f..."
+        dism.exe /online /enable-feature /featurename:$f /all /norestart | Out-Null
+        $needRestart = $true
+    }
+}
+if ($needRestart) {
     Write-Host ""
-    Write-Host "WSL sudah dipasang. RESTART Windows, lalu jalankan install-windows.bat sekali lagi." -ForegroundColor Yellow
+    Write-Host "Fitur WSL sudah diaktifkan. RESTART Windows, lalu jalankan install-windows.bat sekali lagi." -ForegroundColor Yellow
     Read-Host "Tekan Enter untuk keluar"
     exit 0
+}
+
+# features are on: make sure the WSL2 kernel / current WSL is installed
+wsl.exe --status *> $null
+if ($LASTEXITCODE -ne 0) {
+    Info "Memasang/memperbarui kernel WSL2 (wsl --update)..."
+    wsl.exe --update
+    if ($LASTEXITCODE -ne 0) { wsl.exe --update --web-download }
+    wsl.exe --shutdown *> $null
+    wsl.exe --status *> $null
+    if ($LASTEXITCODE -ne 0) {
+        Fail "Kernel WSL2 belum terpasang. Unduh dan pasang manual dari https://aka.ms/wsl2kernel, lalu jalankan installer ini lagi."
+    }
 }
 wsl.exe --set-default-version 2 *> $null
 
