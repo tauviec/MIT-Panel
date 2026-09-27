@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")

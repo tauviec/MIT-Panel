@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -29,7 +30,7 @@ if [ ! -d ${SERVER_ROOT}/pcre ];then
 
     cd ${SOURCE_ROOT}/pcre-${pcreVersion}
     ./configure --prefix=${SERVER_ROOT}/pcre
-    make && make install
+    make -j${cpuCore} && make install
 
     cd $SOURCE_ROOT && rm -rf ${SOURCE_ROOT}/pcre-${pcreVersion}
 fi

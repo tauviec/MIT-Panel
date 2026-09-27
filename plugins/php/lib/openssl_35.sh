@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -23,7 +24,7 @@ if [ ! -d ${SERVER_ROOT}/openssl35 ];then
     tar -zxvf openssl-${opensslVersion}.tar.gz
     cd openssl-${opensslVersion}
     ./config --prefix=${SERVER_ROOT}/openssl35 zlib-dynamic shared
-    make && make install
+    make -j${cpuCore} && make install_sw install_ssldirs
 
 
     # export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:${serverPath}/lib/openssl35/lib

@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -21,7 +22,7 @@ SOURCE_ROOT=$rootPath/source/lib
 #     fi 
 #     tar -zxf libmemcached-1.0.4.tar.gz
 #     cd libmemcached-1.0.4
-#     ./configure --prefix=${SERVER_ROOT}/libmemcached -with-memcached && make && make install
+#     ./configure --prefix=${SERVER_ROOT}/libmemcached -with-memcached && make -j${cpuCore} && make install
 # fi
 #----------------------------- libmemcached end -------------------------#
 
@@ -38,7 +39,7 @@ if [ ! -d ${SERVER_ROOT}/libmemcached ];then
     # sed -i '_bak' "41,52s#opt_servers == false#opt_servers#g" ${SERVER_ROOT}/libmemcached-1.0.18/clients/memflush.cc
     sed -i "s#opt_servers == false#\!opt_servers#g" ${SERVER_ROOT}/libmemcached-1.0.18/clients/memflush.cc
     # sed -i "s#opt_servers == false#\!opt_servers#g" ${serverPath}/source/lib/libmemcached-1.0.18/clients/memflush.cc
-    ./configure --prefix=${SERVER_ROOT}/libmemcached -with-memcached && make && make install
+    ./configure --prefix=${SERVER_ROOT}/libmemcached -with-memcached && make -j${cpuCore} && make install
 
     cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/libmemcached-1.0.18
     

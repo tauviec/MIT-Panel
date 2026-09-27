@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH=$PATH:/opt/homebrew/bin
+source "$(cd "$(dirname "$0")"; pwd)/../../lib/cpu.sh"
 
 curPath=`pwd`
 
@@ -68,7 +69,7 @@ Install_lib()
 		# 	sed -i $BAK 's/CFLAGS \=/CFLAGS \= -std=c99/g' Makefile
 		# fi
 
-		make clean && make && make install && make clean
+		make clean && make -j${cpuCore} && make install && make clean
 		
 		# if [ -d $sourcePath/php${version} ];then
 		# 	cd ${sourcePath} && rm -rf $sourcePath/php${version}

@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -28,7 +29,7 @@ if [ ! -d ${SERVER_ROOT}/libiconv ];then
 
     cd ${SOURCE_ROOT}/libiconv-1.15
 
-    ./configure --prefix=${SERVER_ROOT}/libiconv --enable-static && make && make install
+    ./configure --prefix=${SERVER_ROOT}/libiconv --enable-static && make -j${cpuCore} && make install
 
     if [ -d $SOURCE_ROOT/libiconv-1.15 ];then 
         cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/libiconv-1.15

@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/homebrew/bin:~/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -25,7 +26,7 @@ if [ ! -d ${SERVER_ROOT}/curl ];then
     tar -zxvf curl-7.88.1.tar.gz
     cd curl-7.88.1
 
-    ./configure --prefix=${SERVER_ROOT}/curl --with-openssl && make && make install
+    ./configure --prefix=${SERVER_ROOT}/curl --with-openssl && make -j${cpuCore} && make install
 
     #cd $SOURCE_ROOT
     #rm -rf curl-7.88.1

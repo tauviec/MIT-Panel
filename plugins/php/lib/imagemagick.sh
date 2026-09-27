@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -23,7 +24,7 @@ if [ ! -d ${SERVER_ROOT}/ImageMagick ];then
     tar -zxf ImageMagick-${igmVersion}.tar.gz
     cd ImageMagick-${igmVersion}
     ./configure --prefix=${SERVER_ROOT}/ImageMagick --disable-openmp
-    make && make install
+    make -j${cpuCore} && make install
 
     if [ -d /etc/ld.so.conf.d ];then
         echo "${SERVER_ROOT}/ImageMagick/lib" > /etc/ld.so.conf.d/ImageMagick.conf

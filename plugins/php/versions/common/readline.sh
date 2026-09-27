@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH=$PATH:/opt/homebrew/bin
+source "$(cd "$(dirname "$0")"; pwd)/../../lib/cpu.sh"
 
 # cd ${rootPath}/plugins/php/versions/common && bash readline.sh install 81
 
@@ -73,7 +74,7 @@ Install_lib()
 		cd $sourcePath/php${version}/ext/${LIBNAME}
 		$serverPath/php/$version/bin/phpize
 		./configure --with-php-config=$serverPath/php/$version/bin/php-config $OPTIONS
-		make clean && make && make install && make clean
+		make clean && make -j${cpuCore} && make install && make clean
 	fi
 
 	if [ ! -f "$extFile" ];then

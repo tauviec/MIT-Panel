@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -25,7 +26,7 @@ if [ ! -d ${SERVER_ROOT}/icu ];then
 		cd ${SOURCE_ROOT} && tar -zxvf icu4c-52_2-src.tgz
 
 		cd ${SOURCE_ROOT}/icu/source
-		./runConfigureICU Linux --prefix=${SERVER_ROOT}/icu && make  CXXFLAGS="-g -O2 -std=c++11" && make install
+		./runConfigureICU Linux --prefix=${SERVER_ROOT}/icu && make -j${cpuCore} CXXFLAGS="-g -O2 -std=c++11" && make install
 
 		if [ -d /etc/ld.so.conf.d ];then
 			echo "${SERVER_ROOT}/icu/lib" > /etc/ld.so.conf.d/mw-icu.conf

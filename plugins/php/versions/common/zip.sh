@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH=$PATH:/opt/homebrew/bin
+source "$(cd "$(dirname "$0")"; pwd)/../../lib/cpu.sh"
 
 function version_gt() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" != "$1"; }
 function version_le() { test "$(echo "$@" | tr " " "\n" | sort -V | head -n 1)" == "$1"; }
@@ -73,7 +74,7 @@ Install_lib()
 		$serverPath/php/$version/bin/phpize
 		./configure --with-php-config=$serverPath/php/$version/bin/php-config --with-zip
 
-		make clean && make && make install && make clean
+		make clean && make -j${cpuCore} && make install && make clean
 
 		if [ -d $sourcePath/php${version} ];then
 			cd ${sourcePath} && rm -rf $sourcePath/php${version}

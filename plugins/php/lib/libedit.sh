@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -37,7 +38,7 @@ if [ ! -d ${SERVER_ROOT}/libedit ];then
 
     cd ${SOURCE_ROOT}/libedit-${VERSION}
 
-    ./configure --prefix=${SERVER_ROOT}/libedit && make && make install
+    ./configure --prefix=${SERVER_ROOT}/libedit && make -j${cpuCore} && make install
 
     if [ -d $SOURCE_ROOT/libedit-${VERSION} ];then 
         cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/libedit-${VERSION}

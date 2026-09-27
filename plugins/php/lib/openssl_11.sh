@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -77,7 +78,7 @@ if [ ! -d ${SERVER_ROOT}/openssl11 ] || [ ! -f ${SERVER_ROOT}/openssl11/include/
         ./config --prefix=${SERVER_ROOT}/openssl11 zlib-dynamic shared -w -fPIC -O2 -Wno-error
     fi
     
-    make && make install
+    make -j${cpuCore} && make install_sw install_ssldirs
     
     if [ -d ${SERVER_ROOT}/openssl11/lib64 ] && [ ! -d ${SERVER_ROOT}/openssl11/lib ]; then
         ln -sf ${SERVER_ROOT}/openssl11/lib64 ${SERVER_ROOT}/openssl11/lib

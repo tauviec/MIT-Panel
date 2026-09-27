@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -24,7 +25,7 @@ if [ ! -f /usr/local/lib/libsodium.so ];then
     fi 
     tar -zxvf libsodium-${VERSION}-stable.tar.gz
     cd libsodium-stable
-    ./configure  && make && make check && make install
+    ./configure  && make -j${cpuCore} && make check && make install
 
     cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/libsodium-stable
 fi

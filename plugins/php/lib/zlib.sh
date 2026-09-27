@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -62,7 +63,7 @@ if [ ! -d ${SERVER_ROOT}/zlib ];then
     fi
 
     cd ${SOURCE_ROOT}/zlib-1.2.11
-    ./configure --prefix=${SERVER_ROOT}/zlib && make && make install
+    ./configure --prefix=${SERVER_ROOT}/zlib && make -j${cpuCore} && make install
 
     cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/zlib-1.2.11
 fi

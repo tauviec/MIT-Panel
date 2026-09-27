@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -27,7 +28,7 @@ if [ ! -d ${SERVER_ROOT}/freetype ];then
         cd freetype-2.12.1
     fi
 
-    ./configure --prefix=${SERVER_ROOT}/freetype && make && make install
+    ./configure --prefix=${SERVER_ROOT}/freetype && make -j${cpuCore} && make install
     cd $SOURCE_ROOT && rm -rf freetype-2.12.1
     #rm -rf freetype-2.12.1.tar.gz
     cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/freetype-2.12.1

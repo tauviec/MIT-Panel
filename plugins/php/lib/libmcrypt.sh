@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -30,7 +31,7 @@ if [ $ISFIND == "0" ];then
 
     tar -zxvf libmcrypt-2.5.8.tar.gz
     cd libmcrypt-2.5.8
-    ./configure && make && make install && make clean
+    ./configure && make -j${cpuCore} && make install && make clean
 
     cd $SOURCE_ROOT && rm -rf $SOURCE_ROOT/libmcrypt-2.5.8
 fi
@@ -46,5 +47,5 @@ fi
 #     tar -zxvf libmcrypt-2.5.8.tar.gz
 #     cd libmcrypt-2.5.8
 
-#     ./configure --prefix=${SERVER_ROOT}/libmcrypt && make && make install
+#     ./configure --prefix=${SERVER_ROOT}/libmcrypt && make -j${cpuCore} && make install
 # fi

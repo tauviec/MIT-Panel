@@ -1,6 +1,7 @@
 #!/bin/bash
 PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
 export PATH
+source "$(cd "$(dirname "$0")"; pwd)/cpu.sh"
 
 curPath=`pwd`
 rootPath=$(dirname "$curPath")
@@ -29,7 +30,7 @@ if [ ! -d ${SERVER_ROOT}/libzip ];then
 
     cd ${SOURCE_ROOT}/libzip-1.3.2
 
-    ./configure --prefix=${SERVER_ROOT}/libzip && make && make install
+    ./configure --prefix=${SERVER_ROOT}/libzip && make -j${cpuCore} && make install
     #cd $SOURCE_ROOT
 
     if [ "$?" == "0" ];then
