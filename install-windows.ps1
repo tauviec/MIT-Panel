@@ -19,6 +19,9 @@ function Info($msg) { Write-Host "[*] $msg" -ForegroundColor Cyan }
 function Ok($msg)   { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Fail($msg) { Write-Host "[ERROR] $msg" -ForegroundColor Red; Read-Host "Tekan Enter untuk keluar"; exit 1 }
 
+# keep the window open on any unexpected error instead of closing silently
+trap { Fail "$($_.Exception.Message)`n$($_.InvocationInfo.PositionMessage)" }
+
 # --- elevate ---------------------------------------------------------------
 $principal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -99,7 +102,9 @@ Start-Sleep -Seconds 3
 # --- install the panel: from this folder, or straight from GitHub -----------
 $here = if ($PSCommandPath) { Split-Path -Parent $PSCommandPath } else { "" }
 if ($here -and (Test-Path (Join-Path $here "scripts\install.sh"))) {
-    $wslPath = (wsl.exe -d $Distro -u root -- wslpath -a "$here").Trim()
+    # newer WSL drops backslashes from the arguments, so pass C:/... instead
+    $wslPath = "$(wsl.exe -d $Distro -u root -- wslpath -a ($here -replace '\\', '/'))".Trim()
+    if (-not $wslPath) { Fail "Tidak bisa menerjemahkan path $here ke path WSL." }
     Info "Memasang MIT Panel dari $here (di WSL: $wslPath). Ini bisa 10-30 menit..."
     wsl.exe -d $Distro -u root -- bash -c "sed -i 's/\r$//' '$wslPath/install.sh' '$wslPath/scripts/install.sh' && bash '$wslPath/install.sh'"
 } else {
