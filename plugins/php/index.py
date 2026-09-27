@@ -1,0 +1,1038 @@
+# coding:utf-8
+
+import sys
+import io
+import os
+import time
+import re
+import json
+import shutil
+
+# reload(sys)
+# sys.setdefaultencoding('utf8')
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) + "/class/core")
+# sys.path.append("/usr/local/lib/python3.6/site-packages")
+
+import mit
+
+if mit.isAppleSystem():
+    cmd = 'ls /usr/local/lib/ | grep python  | cut -d \\  -f 1 | awk \'END {print}\''
+    info = mit.execShell(cmd)
+    p = "/usr/local/lib/" + info[0].strip() + "/site-packages"
+    sys.path.append(p)
+
+app_debug = False
+if mit.isAppleSystem():
+    app_debug = True
+
+
+def getPluginName():
+    return 'php'
+
+
+def getPluginDir():
+    return mit.getPluginDir() + '/' + getPluginName()
+
+
+def getServerDir():
+    return mit.getServerDir() + '/' + getPluginName()
+
+
+def getInitDFile(version):
+    if app_debug:
+        return '/tmp/' + getPluginName()
+    return '/etc/init.d/' + getPluginName() + version
+
+
+def getArgs():
+    args = sys.argv[3:]
+    tmp = {}
+    args_len = len(args)
+
+    if args_len == 1:
+        t = args[0].strip('{').strip('}')
+        t = t.split(':')
+        tmp[t[0]] = t[1]
+    elif args_len > 1:
+        for i in range(len(args)):
+            t = args[i].split(':')
+            tmp[t[0]] = t[1]
+
+    return tmp
+
+
+def checkArgs(data, ck=[]):
+    for i in range(len(ck)):
+        if not ck[i] in data:
+            return (False, mit.returnJson(False, 'Parameter: (' + ck[i] + ') none!'))
+    return (True, mit.returnJson(True, 'ok'))
+
+
+def getConf(version):
+    path = getServerDir() + '/' + version + '/etc/php.ini'
+    return path
+
+
+def getFpmConfFile(version):
+    return getServerDir() + '/' + version + '/etc/php-fpm.d/www.conf'
+
+
+def status_progress(version):
+    # ps -ef|grep 'php/81' |grep -v grep | grep -v python | awk '{print $2}
+    cmd = "ps -ef|grep 'php/" + version + \
+        "' |grep -v grep | grep -v python | awk '{print $2}'"
+    data = mit.execShell(cmd)
+    if data[0] == '':
+        return 'stop'
+    return 'start'
+
+
+def getPhpSocket(version):
+    path = getFpmConfFile(version)
+    content = mit.readFile(path)
+    rep = r'listen\s*=\s*(.*)'
+    tmp = re.search(rep, content)
+    return tmp.groups()[0].strip()
+
+
+def status(version):
+    sock = getPhpSocket(version)
+    if sock.find(':'):
+        return status_progress(version)
+
+    if not os.path.exists(sock):
+        return 'stop'
+    return 'start'
+
+
+def contentReplace(content, version):
+    service_path = mit.getServerDir()
+    content = content.replace('{$ROOT_PATH}', mit.getRootDir())
+    content = content.replace('{$SERVER_PATH}', service_path)
+    content = content.replace('{$PHP_VERSION}', version)
+    content = content.replace('{$LOCAL_IP}', mit.getLocalIp())
+    content = content.replace('{$SSL_CRT}', mit.getSslCrt())
+
+    if mit.isAppleSystem():
+        # user = mit.execShell(
+        #     "who | sed -n '2, 1p' |awk '{print $1}'")[0].strip()
+        content = content.replace('{$PHP_USER}', 'nobody')
+        content = content.replace('{$PHP_GROUP}', 'nobody')
+
+        rep = r'listen.owner\s*=\s*(.+)\r?\n'
+        val = ';listen.owner = nobody\n'
+        content = re.sub(rep, val, content)
+
+        rep = r'listen.group\s*=\s*(.+)\r?\n'
+        val = ';listen.group = nobody\n'
+        content = re.sub(rep, val, content)
+
+        rep = r'user\s*=\s*(.+)\r?\n'
+        val = ';user = nobody\n'
+        content = re.sub(rep, val, content)
+
+        rep = r'[^\.]group\s*=\s*(.+)\r?\n'
+        val = ';group = nobody\n'
+        content = re.sub(rep, val, content)
+
+    else:
+        content = content.replace('{$PHP_USER}', 'www')
+        content = content.replace('{$PHP_GROUP}', 'www')
+    return content
+
+
+def makeOpenrestyConf():
+    phpversions = ['00', '56', '70', '71', '72', '73', '74', '80', '81', '82', '83', '84', '85']
+
+    sdir = mit.getServerDir()
+
+    dst_dir = sdir + '/web_conf/php'
+    dst_dir_conf = sdir + '/web_conf/php/conf'
+    if not os.path.exists(dst_dir):
+        mit.execShell('mkdir -p ' + dst_dir)
+
+    if not os.path.exists(dst_dir_conf):
+        mit.execShell('mkdir -p ' + dst_dir_conf)
+
+    d_pathinfo = sdir + '/web_conf/php/pathinfo.conf'
+    if not os.path.exists(d_pathinfo):
+        s_pathinfo = getPluginDir() + '/conf/pathinfo.conf'
+        shutil.copyfile(s_pathinfo, d_pathinfo)
+
+    info = getPluginDir() + '/info.json'
+    content = mit.readFile(info)
+    content = json.loads(content)
+    versions = content['versions']
+    tpl = getPluginDir() + '/conf/enable-php.conf'
+    tpl_content = mit.readFile(tpl)
+    for x in phpversions:
+        dfile = sdir + '/web_conf/php/conf/enable-php-' + x + '.conf'
+        if not os.path.exists(dfile):
+            if x == '00':
+                mit.writeFile(dfile, 'set $PHP_ENV 0;')
+            else:
+                w_content = contentReplace(tpl_content, x)
+                mit.writeFile(dfile, w_content)
+
+    # php-fpm status
+    # for version in phpversions:
+    #     dfile = sdir + '/web_conf/php/status/phpfpm_status_' + version + '.conf'
+    #     tpl = getPluginDir() + '/conf/phpfpm_status.conf'
+    #     if not os.path.exists(dfile):
+    #         content = mit.readFile(tpl)
+    #         content = contentReplace(content, version)
+    #         mit.writeFile(dfile, content)
+
+
+def phpPrependFile(version):
+    app_start = getServerDir() + '/app_start.php'
+    if not os.path.exists(app_start):
+        tpl = getPluginDir() + '/conf/app_start.php'
+        content = mit.readFile(tpl)
+        content = contentReplace(content, version)
+        mit.writeFile(app_start, content)
+
+
+def phpFpmReplace(version):
+    desc_php_fpm = getServerDir() + '/' + version + '/etc/php-fpm.conf'
+    if not os.path.exists(desc_php_fpm):
+        tpl_php_fpm = getPluginDir() + '/conf/php-fpm.conf'
+        content = mit.readFile(tpl_php_fpm)
+        content = contentReplace(content, version)
+        mit.writeFile(desc_php_fpm, content)
+    else:
+        if version == '52':
+            tpl_php_fpm = tpl_php_fpm = getPluginDir() + '/conf/php-fpm-52.conf'
+            content = mit.readFile(tpl_php_fpm)
+            mit.writeFile(desc_php_fpm, content)
+
+
+def phpFpmWwwReplace(version):
+    service_php_fpm_dir = getServerDir() + '/' + version + '/etc/php-fpm.d/'
+
+    if not os.path.exists(service_php_fpm_dir):
+        os.mkdir(service_php_fpm_dir)
+
+    service_php_fpmitww = service_php_fpm_dir + '/www.conf'
+    if not os.path.exists(service_php_fpmitww):
+        tpl_php_fpmitww = getPluginDir() + '/conf/www.conf'
+        content = mit.readFile(tpl_php_fpmitww)
+        content = contentReplace(content, version)
+        mit.writeFile(service_php_fpmitww, content)
+
+
+def makePhpIni(version):
+    dst_ini = getConf(version)
+    if not os.path.exists(dst_ini):
+        src_ini = getPluginDir() + '/conf/php' + version[0:1] + '.ini'
+        # shutil.copyfile(s_ini, d_ini)
+        content = mit.readFile(src_ini)
+        if version == '52':
+            content = content + "auto_prepend_file=" + mit.getServerDir() + "/php/app_start.php"
+
+        content = contentReplace(content, version)
+        mit.writeFile(dst_ini, content)
+
+
+def initReplace(version):
+    makeOpenrestyConf()
+    makePhpIni(version)
+
+    initD_path = getServerDir() + '/init.d'
+    if not os.path.exists(initD_path):
+        os.mkdir(initD_path)
+
+    file_bin = initD_path + '/php' + version
+    if not os.path.exists(file_bin):
+        file_tpl = getPluginDir() + '/init.d/php.tpl'
+
+        if version == '52':
+            file_tpl = getPluginDir() + '/init.d/php52.tpl'
+
+        content = mit.readFile(file_tpl)
+        content = contentReplace(content, version)
+
+        mit.writeFile(file_bin, content)
+        mit.execShell('chmod +x ' + file_bin)
+
+    phpPrependFile(version)
+    phpFpmWwwReplace(version)
+    phpFpmReplace(version)
+
+    session_path = getServerDir() + '/tmp/session'
+    if not os.path.exists(session_path):
+        mit.execShell('mkdir -p ' + session_path)
+        mit.execShell('chown -R www:www ' + session_path)
+
+    upload_path = getServerDir() + '/tmp/upload'
+    if not os.path.exists(upload_path):
+        mit.execShell('mkdir -p ' + upload_path)
+        mit.execShell('chown -R www:www ' + upload_path)
+
+    # systemd
+    systemDir = mit.systemdCfgDir()
+    systemService = systemDir + '/php' + version + '.service'
+    systemServiceTpl = getPluginDir() + '/init.d/php.service.tpl'
+    if version == '52':
+        systemServiceTpl = getPluginDir() + '/init.d/php.service.52.tpl'
+
+    if os.path.exists(systemDir) and not os.path.exists(systemService):
+        service_path = mit.getServerDir()
+        se_content = mit.readFile(systemServiceTpl)
+        se_content = se_content.replace('{$VERSION}', version)
+        se_content = se_content.replace('{$SERVER_PATH}', service_path)
+        mit.writeFile(systemService, se_content)
+        mit.execShell('systemctl daemon-reload')
+
+    return file_bin
+
+
+def phpOp(version, method):
+    file = initReplace(version)
+
+    if not mit.isAppleSystem():
+        if method == 'stop' or method == 'restart':
+            mit.execShell(file + ' ' + 'stop')
+
+        data = mit.execShell('systemctl ' + method + ' php' + version)
+        if data[1] == '':
+            return 'ok'
+        return data[1]
+
+    data = mit.execShell(file + ' ' + method)
+    if data[1] == '':
+        return 'ok'
+    return data[1]
+
+
+def start(version):
+    return phpOp(version, 'start')
+
+
+def stop(version):
+    status = phpOp(version, 'stop')
+
+    if version == '52':
+        file = initReplace(version)
+        data = mit.execShell(file + ' ' + 'stop')
+        if data[1] == '':
+            return 'ok'
+    return status
+
+
+def restart(version):
+    return phpOp(version, 'restart')
+
+
+def reload(version):
+    if version == '52':
+        return phpOp(version, 'restart')
+    return phpOp(version, 'reload')
+
+
+def initdStatus(version):
+    if mit.isAppleSystem():
+        return "ok"
+
+    shell_cmd = 'systemctl status php' + version + ' | grep loaded | grep "enabled;"'
+    data = mit.execShell(shell_cmd)
+    if data[0] == '':
+        return 'fail'
+    return 'ok'
+
+
+def initdInstall(version):
+    if mit.isAppleSystem():
+        return "ok"
+
+    mit.execShell('systemctl enable php' + version)
+    return 'ok'
+
+
+def initdUinstall(version):
+    if mit.isAppleSystem():
+        return "ok"
+
+    mit.execShell('systemctl disable php' + version)
+    return 'ok'
+
+
+def fpmLog(version):
+    return getServerDir() + '/' + version + '/var/log/php-fpm.log'
+
+
+def fpmSlowLog(version):
+    return getServerDir() + '/' + version + '/var/log/www-slow.log'
+
+
+def getPhpConf(version):
+    gets = [
+        {'name': 'short_open_tag', 'type': 1, 'ps': 'Short tag support'},
+        {'name': 'asp_tags', 'type': 1, 'ps': 'ASP tag support'},
+        {'name': 'max_execution_time', 'type': 2, 'ps': 'Maximum script run time'},
+        {'name': 'max_input_time', 'type': 2, 'ps': 'Maximum input time'},
+        {'name': 'max_input_vars', 'type': 2, 'ps': 'Maximum number of inputs'},
+        {'name': 'memory_limit', 'type': 2, 'ps': 'Script memory limit'},
+        {'name': 'post_max_size', 'type': 2, 'ps': 'POST data maximum size'},
+        {'name': 'file_uploads', 'type': 1, 'ps': 'Whether to allow uploading files'},
+        {'name': 'upload_max_filesize', 'type': 2, 'ps': 'The maximum size allowed for uploaded files'},
+        {'name': 'max_file_uploads', 'type': 2, 'ps': 'The maximum number of files allowed to be uploaded simultaneously'},
+        {'name': 'default_socket_timeout', 'type': 2, 'ps': 'Socket timeout'},
+        {'name': 'error_reporting', 'type': 3, 'ps': 'Error level'},
+        {'name': 'display_errors', 'type': 1, 'ps': 'Whether to output detailed error information'},
+        {'name': 'cgi.fix_pathinfo', 'type': 0, 'ps': 'Whether to enable pathinfo'},
+        {'name': 'date.timezone', 'type': 3, 'ps': 'Time zone'}
+    ]
+    phpini = mit.readFile(getConf(version))
+    result = []
+    for g in gets:
+        rep = g['name'] + r'\s*=\s*([0-9A-Za-z_& ~]+)(\s*;?|\r?\n)'
+        tmp = re.search(rep, phpini)
+        if not tmp:
+            continue
+        g['value'] = tmp.groups()[0]
+        result.append(g)
+    return mit.getJson(result)
+
+
+def submitPhpConf(version):
+    gets = ['display_errors', 'cgi.fix_pathinfo', 'date.timezone', 'short_open_tag',
+            'asp_tags', 'max_execution_time', 'max_input_time', 'max_input_vars', 'memory_limit',
+            'post_max_size', 'file_uploads', 'upload_max_filesize', 'max_file_uploads',
+            'default_socket_timeout', 'error_reporting']
+    args = getArgs()
+    filename = getServerDir() + '/' + version + '/etc/php.ini'
+    phpini = mit.readFile(filename)
+    for g in gets:
+        if g in args:
+            rep = g + r'\s*=\s*(.+)\r?\n'
+            val = g + ' = ' + args[g] + '\n'
+            phpini = re.sub(rep, val, phpini)
+    mit.writeFile(filename, phpini)
+    # mit.execShell(getServerDir() + '/init.d/php' + version + ' reload')
+    reload(version)
+    return mit.returnJson(True, 'Successfully set')
+
+
+def getLimitConf(version):
+    fileini = getConf(version)
+    phpini = mit.readFile(fileini)
+    filefpm = getFpmConfFile(version)
+    phpfpm = mit.readFile(filefpm)
+
+    # print fileini, filefpm
+    data = {}
+    try:
+        rep = r"upload_max_filesize\s*=\s*([0-9]+)M"
+        tmp = re.search(rep, phpini).groups()
+        data['max'] = tmp[0]
+    except:
+        data['max'] = '50'
+
+    try:
+        rep = r"request_terminate_timeout\s*=\s*([0-9]+)\r?\n"
+        tmp = re.search(rep, phpfpm).groups()
+        data['maxTime'] = tmp[0]
+    except:
+        data['maxTime'] = 0
+
+    try:
+        rep = r"\n;*\s*cgi\.fix_pathinfo\s*=\s*([0-9]+)\s*\r?\n"
+        tmp = re.search(rep, phpini).groups()
+
+        if tmp[0] == '1':
+            data['pathinfo'] = True
+        else:
+            data['pathinfo'] = False
+    except:
+        data['pathinfo'] = False
+
+    return mit.getJson(data)
+
+
+def setMaxTime(version):
+    args = getArgs()
+    data = checkArgs(args, ['time'])
+    if not data[0]:
+        return data[1]
+
+    time = args['time']
+    if int(time) < 30 or int(time) > 86400:
+        return mit.returnJson(False, 'Please fill in the value between 30-86400!')
+
+    filefpm = getFpmConfFile(version)
+    conf = mit.readFile(filefpm)
+    rep = r"request_terminate_timeout\s*=\s*([0-9]+)\r?\n"
+    conf = re.sub(rep, "request_terminate_timeout = " + time + "\n", conf)
+    mit.writeFile(filefpm, conf)
+
+    fileini = getServerDir() + "/" + version + "/etc/php.ini"
+    phpini = mit.readFile(fileini)
+    rep = r"max_execution_time\s*=\s*([0-9]+)\r?\n"
+    phpini = re.sub(rep, "max_execution_time = " + time + "\n", phpini)
+    rep = r"max_input_time\s*=\s*([0-9]+)\r?\n"
+    phpini = re.sub(rep, "max_input_time = " + time + "\n", phpini)
+    mit.writeFile(fileini, phpini)
+    return mit.returnJson(True, 'Successfully set!')
+
+
+def setMaxSize(version):
+    args = getArgs()
+    data = checkArgs(args, ['max'])
+    if not data[0]:
+        return data[1]
+
+    maxVal = args['max']
+    if int(maxVal) < 2:
+        return mit.returnJson(False, 'The upload size limit cannot be less than 2MB!')
+
+    path = getConf(version)
+    conf = mit.readFile(path)
+    rep = r"\nupload_max_filesize\s*=\s*[0-9]+M"
+    conf = re.sub(rep, '\nupload_max_filesize = ' + maxVal + 'M', conf)
+    rep = r"\npost_max_size\s*=\s*[0-9]+M"
+    conf = re.sub(rep, '\npost_max_size = ' + maxVal + 'M', conf)
+    mit.writeFile(path, conf)
+
+    msg = mit.getInfo('Set PHP-{1} maximum upload size to [{2}MB]!', (version, maxVal,))
+    mit.writeLog('Plugin Management [PHP]', msg)
+    return mit.returnJson(True, 'Successfully set!')
+
+
+def getFpmConfig(version):
+
+    filefpm = getServerDir() + '/' + version + '/etc/php-fpm.d/www.conf'
+    conf = mit.readFile(filefpm)
+    data = {}
+    rep = r"\s*pm.max_children\s*=\s*([0-9]+)\s*"
+    tmp = re.search(rep, conf).groups()
+    data['max_children'] = tmp[0]
+
+    rep = r"\s*pm.start_servers\s*=\s*([0-9]+)\s*"
+    tmp = re.search(rep, conf).groups()
+    data['start_servers'] = tmp[0]
+
+    rep = r"\s*pm.min_spare_servers\s*=\s*([0-9]+)\s*"
+    tmp = re.search(rep, conf).groups()
+    data['min_spare_servers'] = tmp[0]
+
+    rep = r"\s*pm.max_spare_servers \s*=\s*([0-9]+)\s*"
+    tmp = re.search(rep, conf).groups()
+    data['max_spare_servers'] = tmp[0]
+
+    rep = r"\s*pm\s*=\s*(\w+)\s*"
+    tmp = re.search(rep, conf).groups()
+    data['pm'] = tmp[0]
+    return mit.getJson(data)
+
+
+def setFpmConfig(version):
+    args = getArgs()
+    # if not 'max' in args:
+    #     return 'missing time args!'
+
+    version = args['version']
+    max_children = args['max_children']
+    start_servers = args['start_servers']
+    min_spare_servers = args['min_spare_servers']
+    max_spare_servers = args['max_spare_servers']
+    pm = args['pm']
+
+    file = getServerDir() + '/' + version + '/etc/php-fpm.d/www.conf'
+    conf = mit.readFile(file)
+
+    rep = r"\s*pm.max_children\s*=\s*([0-9]+)\s*"
+    conf = re.sub(rep, "\npm.max_children = " + max_children, conf)
+
+    rep = r"\s*pm.start_servers\s*=\s*([0-9]+)\s*"
+    conf = re.sub(rep, "\npm.start_servers = " + start_servers, conf)
+
+    rep = r"\s*pm.min_spare_servers\s*=\s*([0-9]+)\s*"
+    conf = re.sub(rep, "\npm.min_spare_servers = " +
+                  min_spare_servers, conf)
+
+    rep = r"\s*pm.max_spare_servers \s*=\s*([0-9]+)\s*"
+    conf = re.sub(rep, "\npm.max_spare_servers = " +
+                  max_spare_servers + "\n", conf)
+
+    rep = r"\s*pm\s*=\s*(\w+)\s*"
+    conf = re.sub(rep, "\npm = " + pm + "\n", conf)
+
+    mit.writeFile(file, conf)
+    reload(version)
+
+    msg = mit.getInfo('Set PHP-{1} concurrency settings,max_children={2},start_servers={3},min_spare_servers={4},max_spare_servers={5}', (version, max_children,
+                                                                                                                      start_servers, min_spare_servers, max_spare_servers,))
+    mit.writeLog('Plugin Management [PHP]', msg)
+    return mit.returnJson(True, 'Successfully set!')
+
+
+# def checkFpmStatusFile(version):
+#     if not mit.isInstalledWeb():
+#         return False
+
+#     dfile = getServerDir() + '/nginx/conf/php_status/phpfpm_status_' + version + '.conf'
+#     if not os.path.exists(dfile):
+#         tpl = getPluginDir() + '/conf/phpfpm_status.conf'
+#         content = mit.readFile(tpl)
+#         content = contentReplace(content, version)
+#         mit.writeFile(dfile, content)
+#         mit.restartWeb()
+#     return True
+
+
+def getFpmAddress(version):
+    fpm_address = '/tmp/php-cgi-{}.sock'.format(version)
+    php_fpm_file = getFpmConfFile(version)
+    try:
+        content = readFile(php_fpm_file)
+        tmp = re.findall(r"listen\s*=\s*(.+)", content)
+        if not tmp:
+            return fpm_address
+        if tmp[0].find('sock') != -1:
+            return fpm_address
+        if tmp[0].find(':') != -1:
+            listen_tmp = tmp[0].split(':')
+            if bind:
+                fpm_address = (listen_tmp[0], int(listen_tmp[1]))
+            else:
+                fpm_address = ('127.0.0.1', int(listen_tmp[1]))
+        else:
+            fpm_address = ('127.0.0.1', int(tmp[0]))
+        return fpm_address
+    except:
+        return fpm_address
+
+
+def getFpmStatus(version):
+
+    if version == '52':
+        return mit.returnJson(False, 'PHP[' + version + '] is not supported!!!')
+
+    stat = status(version)
+    if stat == 'stop':
+        return mit.returnJson(False, 'PHP[' + version + '] is not started!!!')
+
+    sock_file = getFpmAddress(version)
+    try:
+        sock_data = mit.requestFcgiPHP(
+            sock_file, '/phpfpm_status_' + version + '?json')
+    except Exception as e:
+        return mit.returnJson(False, str(e))
+
+    # print(data)
+    result = str(sock_data, encoding='utf-8')
+    data = json.loads(result)
+    fTime = time.localtime(int(data['start time']))
+    data['start time'] = time.strftime('%Y-%m-%d %H:%M:%S', fTime)
+    return mit.returnJson(True, "OK", data)
+
+
+def getSessionConf(version):
+    filename = getConf(version)
+    if not os.path.exists(filename):
+        return mit.returnJson(False, 'The specified PHP version does not exist!')
+
+    phpini = mit.readFile(filename)
+
+    rep = r'session.save_handler\s*=\s*([0-9A-Za-z_& ~]+)(\s*;?|\r?\n)'
+    save_handler = re.search(rep, phpini)
+    if save_handler:
+        save_handler = save_handler.group(1)
+    else:
+        save_handler = "files"
+
+    reppath = r'\nsession.save_path\s*=\s*"tcp\:\/\/([\d\.]+):(\d+).*\r?\n'
+    passrep = r'\nsession.save_path\s*=\s*"tcp://[\w\.\?\:]+=(.*)"\r?\n'
+    memcached = r'\nsession.save_path\s*=\s*"([\d\.]+):(\d+)"'
+    save_path = re.search(reppath, phpini)
+    if not save_path:
+        save_path = re.search(memcached, phpini)
+    passwd = re.search(passrep, phpini)
+    port = ""
+    if passwd:
+        passwd = passwd.group(1)
+    else:
+        passwd = ""
+    if save_path:
+        port = save_path.group(2)
+        save_path = save_path.group(1)
+
+    else:
+        save_path = ""
+
+    data = {"save_handler": save_handler, "save_path": save_path,
+            "passwd": passwd, "port": port}
+    return mit.returnJson(True, 'ok', data)
+
+
+def setSessionConf(version):
+
+    args = getArgs()
+
+    ip = args['ip']
+    port = args['port']
+    passwd = args['passwd']
+    save_handler = args['save_handler']
+
+    if save_handler != "files":
+        iprep = r"(2(5[0-5]{1}|[0-4]\d{1})|[0-1]?\d{1,2})\.(2(5[0-5]{1}|[0-4]\d{1})|[0-1]?\d{1,2})\.(2(5[0-5]{1}|[0-4]\d{1})|[0-1]?\d{1,2})\.(2(5[0-5]{1}|[0-4]\d{1})|[0-1]?\d{1,2})"
+        if not re.search(iprep, ip):
+            return mit.returnJson(False, 'Please enter the correct IP address')
+
+        try:
+            port = int(port)
+            if port >= 65535 or port < 1:
+                return mit.returnJson(False, 'Please enter the correct port number')
+        except:
+            return mit.returnJson(False, 'Please enter the correct port number')
+        prep = r"[\~\`\/\=]"
+        if re.search(prep, passwd):
+            return mit.returnJson(False, 'Please do not enter the following special characters " ~ ` / = "')
+
+    filename = getConf(version)
+    if not os.path.exists(filename):
+        return mit.returnJson(False, 'The specified PHP version does not exist!')
+    phpini = mit.readFile(filename)
+
+    session_tmp = getServerDir() + "/tmp/session"
+
+    rep = r'session.save_handler\s*=\s*(.+)\r?\n'
+    val = r'session.save_handler = ' + save_handler + '\n'
+    phpini = re.sub(rep, val, phpini)
+
+    if save_handler == "memcached":
+        if not re.search("memcached.so", phpini):
+            return mit.returnJson(False, 'Please install the %s extension first' % save_handler)
+        rep = r'\nsession.save_path\s*=\s*(.+)\r?\n'
+        val = r'\nsession.save_path = "%s:%s" \n' % (ip, port)
+        if re.search(rep, phpini):
+            phpini = re.sub(rep, val, phpini)
+        else:
+            phpini = re.sub('\n;session.save_path = "' + session_tmp + '"',
+                            '\n;session.save_path = "' + session_tmp + '"' + val, phpini)
+
+    if save_handler == "memcache":
+        if not re.search("memcache.so", phpini):
+            return mit.returnJson(False, 'Please install the %s extension first' % save_handler)
+        rep = r'\nsession.save_path\s*=\s*(.+)\r?\n'
+        val = r'\nsession.save_path = "%s:%s" \n' % (ip, port)
+        if re.search(rep, phpini):
+            phpini = re.sub(rep, val, phpini)
+        else:
+            phpini = re.sub('\n;session.save_path = "' + session_tmp + '"',
+                            '\n;session.save_path = "' + session_tmp + '"' + val, phpini)
+
+    if save_handler == "redis":
+        if not re.search("redis.so", phpini):
+            return mit.returnJson(False, 'Please install the %s extension first' % save_handler)
+        if passwd:
+            passwd = "?auth=" + passwd
+        else:
+            passwd = ""
+        rep = r'\nsession.save_path\s*=\s*(.+)\r?\n'
+        val = r'\nsession.save_path = "tcp://%s:%s%s"\n' % (ip, port, passwd)
+        res = re.search(rep, phpini)
+        if res:
+            phpini = re.sub(rep, val, phpini)
+        else:
+            phpini = re.sub('\n;session.save_path = "' + session_tmp + '"',
+                            '\n;session.save_path = "' + session_tmp + '"' + val, phpini)
+
+    if save_handler == "files":
+        rep = r'\nsession.save_path\s*=\s*(.+)\r?\n'
+        val = r'\nsession.save_path = "' + session_tmp + '"\n'
+        if re.search(rep, phpini):
+            phpini = re.sub(rep, val, phpini)
+        else:
+            phpini = re.sub('\n;session.save_path = "' + session_tmp + '"',
+                            '\n;session.save_path = "' + session_tmp + '"' + val, phpini)
+
+    mit.writeFile(filename, phpini)
+    reload(version)
+    return mit.returnJson(True, 'Successfully set!')
+
+
+def getSessionCount_Origin(version):
+    session_tmp = getServerDir() + "/tmp/session"
+    d = [session_tmp]
+    count = 0
+    for i in d:
+        if not os.path.exists(i):
+            mit.execShell('mkdir -p %s' % i)
+        list = os.listdir(i)
+        for l in list:
+            if os.path.isdir(i + "/" + l):
+                l1 = os.listdir(i + "/" + l)
+                for ll in l1:
+                    if "sess_" in ll:
+                        count += 1
+                continue
+            if "sess_" in l:
+                count += 1
+
+    s = "find /tmp -mtime +1 |grep 'sess_' | wc -l"
+    old_file = int(mit.execShell(s)[0].split("\n")[0])
+
+    s = "find " + session_tmp + " -mtime +1 |grep 'sess_'|wc -l"
+    old_file += int(mit.execShell(s)[0].split("\n")[0])
+    return {"total": count, "oldfile": old_file}
+
+
+def getSessionCount(version):
+    data = getSessionCount_Origin(version)
+    return mit.returnJson(True, 'ok!', data)
+
+
+def cleanSessionOld(version):
+    s = "find /tmp -mtime +1 |grep 'sess_'|xargs rm -f"
+    mit.execShell(s)
+
+    session_tmp = getServerDir() + "/tmp/session"
+    s = "find " + session_tmp + " -mtime +1 |grep 'sess_' |xargs rm -f"
+    mit.execShell(s)
+    old_file_conf = getSessionCount_Origin(version)["oldfile"]
+    if old_file_conf == 0:
+        return mit.returnJson(True, 'Clean up successfully')
+    else:
+        return mit.returnJson(True, 'Cleanup failed')
+
+
+def getDisableFunc(version):
+    filename = getConf(version)
+    if not os.path.exists(filename):
+        return mit.returnJson(False, 'The specified PHP version does not exist!')
+
+    phpini = mit.readFile(filename)
+    data = {}
+    rep = r"disable_functions\s*=\s{0,1}(.*)\r?\n"
+    tmp = re.search(rep, phpini).groups()
+    data['disable_functions'] = tmp[0]
+    return mit.getJson(data)
+
+
+def setDisableFunc(version):
+    filename = getConf(version)
+    if not os.path.exists(filename):
+        return mit.returnJson(False, 'The specified PHP version does not exist!')
+
+    args = getArgs()
+    disable_functions = args['disable_functions']
+
+    phpini = mit.readFile(filename)
+    rep = r"disable_functions\s*=\s*.*\r?\n"
+    phpini = re.sub(rep, 'disable_functions = ' +
+                    disable_functions + "\n", phpini)
+
+    msg = mit.getInfo('Modify the disabled function of PHP-{1} to [{2}]', (version, disable_functions,))
+    mit.writeLog('Plugin Management [PHP]', msg)
+    mit.writeFile(filename, phpini)
+    reload(version)
+    return mit.returnJson(True, 'Successfully set!')
+
+
+def getPhpinfo(version):
+    stat = status(version)
+    if stat == 'stop':
+        return 'PHP[' + version + '] is not started, not accessible!!!'
+
+    sock_file = getFpmAddress(version)
+    root_dir = mit.getRootDir() + '/phpinfo'
+
+    mit.execShell("rm -rf " + root_dir)
+    mit.execShell("mkdir -p " + root_dir)
+    mit.writeFile(root_dir + '/phpinfo.php', '<?php phpinfo(); ?>')
+    sock_data = mit.requestFcgiPHP(sock_file, '/phpinfo.php', root_dir)
+    os.system("rm -rf " + root_dir)
+    phpinfo = str(sock_data, encoding='utf-8')
+    return phpinfo
+
+
+def get_php_info(args):
+    return getPhpinfo(args['version'])
+
+
+def getLibConf(version):
+    fname = getConf(version)
+    if not os.path.exists(fname):
+        return mit.returnJson(False, 'The specified PHP version does not exist!')
+
+    phpini = mit.readFile(fname)
+
+    libpath = getPluginDir() + '/versions/phplib.conf'
+    phplib = json.loads(mit.readFile(libpath))
+
+    libs = []
+    tasks = mit.M('tasks').where(
+        "status!=?", ('1',)).field('status,name').select()
+    for lib in phplib:
+        lib['task'] = '1'
+        for task in tasks:
+            tmp = mit.getStrBetween('[', ']', task['name'])
+            if not tmp:
+                continue
+            tmp1 = tmp.split('-')
+            if tmp1[0].lower() == lib['name'].lower():
+                lib['task'] = task['status']
+                lib['phpversions'] = []
+                lib['phpversions'].append(tmp1[1])
+        if phpini.find(lib['check']) == -1:
+            lib['status'] = False
+        else:
+            lib['status'] = True
+        libs.append(lib)
+    return mit.returnJson(True, 'OK!', libs)
+
+
+def installLib(version):
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+
+    name = args['name']
+    execstr = "cd " + getPluginDir() + "/versions && /bin/bash  common.sh " + \
+        version + ' install ' + name
+
+    rettime = time.strftime('%Y-%m-%d %H:%M:%S')
+    insert_info = (None, 'install [' + name + '-' + version + ']',
+                   'execshell', '0', rettime, execstr)
+    mit.M('tasks').add('id,name,type,status,addtime,execstr', insert_info)
+
+    mit.triggerTask()
+    return mit.returnJson(True, 'Added download task to queue!')
+
+
+def uninstallLib(version):
+    args = getArgs()
+    data = checkArgs(args, ['name'])
+    if not data[0]:
+        return data[1]
+
+    name = args['name']
+    execstr = "cd " + getPluginDir() + "/versions && /bin/bash  common.sh " + \
+        version + ' uninstall ' + name
+
+    data = mit.execShell(execstr)
+    # data[0] == '' and
+    if data[1] == '':
+        return mit.returnJson(True, 'Has been uninstalled successfully!')
+    else:
+        return mit.returnJson(False, 'Uninstall information! [Channel 0]:' + data[0] + "[Channel 0]:" + data[1])
+
+
+def getConfAppStart():
+    pstart = mit.getServerDir() + '/php/app_start.php'
+    return pstart
+
+
+def installPreInspection(version):
+    if version != '52':
+        return 'ok'
+
+    sys = mit.execShell(
+        "cat /etc/*-release | grep PRETTY_NAME |awk -F = '{print $2}' | awk -F '\"' '{print $2}'| awk '{print $1}'")
+
+    if sys[0].strip() == '':
+        return 'Unable to detect system version'
+
+    sys_id = mit.execShell(
+        "cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}' | awk -F '\"' '{print $2}'")
+
+    sysName = sys[0].strip().lower()
+    sysId = sys_id[0].strip()
+
+    if sysName == 'ubuntu':
+        return 'ubuntu can not be installed'
+
+    if sysName == 'debian' and int(sysId) > 10:
+        return 'debian10 can be installed'
+
+    if sysName == 'centos' and int(sysId) > 8:
+        return 'centos[{}] cannot be installed'.format(sysId)
+
+    if sysName == 'fedora':
+        sys_id = mit.execShell(
+            "cat /etc/*-release | grep VERSION_ID | awk -F = '{print $2}'")
+        sysId = sys_id[0].strip()
+        if int(sysId) > 31:
+            return 'fedora[{}] cannot be installed'.format(sysId)
+    return 'ok'
+
+
+if __name__ == "__main__":
+
+    if len(sys.argv) < 3:
+        print('missing parameters')
+        exit(0)
+
+    func = sys.argv[1]
+    version = sys.argv[2]
+
+    if func == 'status':
+        print(status(version))
+    elif func == 'start':
+        print(start(version))
+    elif func == 'stop':
+        print(stop(version))
+    elif func == 'restart':
+        print(restart(version))
+    elif func == 'reload':
+        print(reload(version))
+    elif func == 'install_pre_inspection':
+        print(installPreInspection(version))
+    elif func == 'initd_status':
+        print(initdStatus(version))
+    elif func == 'initd_install':
+        print(initdInstall(version))
+    elif func == 'initd_uninstall':
+        print(initdUinstall(version))
+    elif func == 'fpm_log':
+        print(fpmLog(version))
+    elif func == 'fpm_slow_log':
+        print(fpmSlowLog(version))
+    elif func == 'conf':
+        print(getConf(version))
+    elif func == 'app_start':
+        print(getConfAppStart())
+    elif func == 'get_php_conf':
+        print(getPhpConf(version))
+    elif func == 'get_fpm_conf_file':
+        print(getFpmConfFile(version))
+    elif func == 'submit_php_conf':
+        print(submitPhpConf(version))
+    elif func == 'get_limit_conf':
+        print(getLimitConf(version))
+    elif func == 'set_max_time':
+        print(setMaxTime(version))
+    elif func == 'set_max_size':
+        print(setMaxSize(version))
+    elif func == 'get_fpm_conf':
+        print(getFpmConfig(version))
+    elif func == 'set_fpm_conf':
+        print(setFpmConfig(version))
+    elif func == 'get_fpm_status':
+        print(getFpmStatus(version))
+    elif func == 'get_session_conf':
+        print(getSessionConf(version))
+    elif func == 'set_session_conf':
+        print(setSessionConf(version))
+    elif func == 'get_session_count':
+        print(getSessionCount(version))
+    elif func == 'clean_session_old':
+        print(cleanSessionOld(version))
+    elif func == 'get_disable_func':
+        print(getDisableFunc(version))
+    elif func == 'set_disable_func':
+        print(setDisableFunc(version))
+    elif func == 'get_phpinfo':
+        print(getPhpinfo(version))
+    elif func == 'get_lib_conf':
+        print(getLibConf(version))
+    elif func == 'install_lib':
+        print(installLib(version))
+    elif func == 'uninstall_lib':
+        print(uninstallLib(version))
+    else:
+        print("fail")

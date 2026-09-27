@@ -1,0 +1,20 @@
+{
+	"title": "Clone Server",
+	"tip": "soft",
+	"name": "clone",
+	"type": "other plugins",
+	"ps": "Salin seluruh server ke server baru lewat SSH: software, situs, SSL, vhost dan database",
+	"shell": "install.sh",
+	"checks": "server/clone",
+	"path": "server/clone",
+	"author": "MIT Panel",
+	"home": "",
+	"date": "2026-09-27",
+	"pid": "5",
+	"versions": [
+		"1.0"
+	],
+	"updates": [
+		"1.0"
+	]
+}

@@ -1,0 +1,18 @@
+<div class="bt-form">
+	<div class="bt-w-main">
+		<div class="bt-w-menu">
+			<p class="bgw" onclick="cloneForm();">Clone Server</p>
+			<p onclick="cloneProgress();">Progres &amp; Log</p>
+			<p onclick="cloneSsh();">Terminal SSH</p>
+		</div>
+		<div class="bt-w-con pd15">
+			<div class="soft-man-con"></div>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript">
+$.getScript("/plugins/file?name=clone&f=js/clone.js", function(){
+	cloneForm();
+});
+</script>

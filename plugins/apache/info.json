@@ -1,0 +1,21 @@
+{
+	"title": "Apache",
+	"tip": "soft",
+	"name": "apache",
+	"type": "other plugins",
+	"ps": "Apache HTTP Server 2.4 (event MPM + PHP-FPM), full .htaccess support. Cannot be installed together with OpenResty",
+	"shell": "install.sh",
+	"install_pre_inspection": true,
+	"checks": "server/apache",
+	"path": "server/apache",
+	"author": "Apache Software Foundation",
+	"home": "https://httpd.apache.org",
+	"date": "2026-09-27",
+	"pid": "1",
+	"versions": [
+		"2.4"
+	],
+	"updates": [
+		"2.4"
+	]
+}

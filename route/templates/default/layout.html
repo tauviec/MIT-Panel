@@ -1,0 +1,209 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="renderer" content="webkit">
+    <title>{{data['title']}}</title>
+    <link rel="shortcut icon" href="/static/favicon.ico" type="image/x-icon" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="/static/bootstrap-3.3.5/css/bootstrap.min.css?v={{config.version}}" rel="stylesheet">
+    <link href="/static/css/site.css?v={{config.version}}" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
+        }
+    </style>
+    <link href="/static/codemirror/lib/codemirror.css?v={{config.version}}" rel="stylesheet">
+    <script src="/static/language/Simplified_Chinese/lan.js?v={{config.version}}"></script>
+    <!--[if lte IE 9]>
+		<script src="/static/js/requestAnimationFrame.js"></script>
+	<![endif]-->
+    {% for menu in data['hook_menu'] %}
+    {% if menu['css_path'] and data['hook_tag'] == menu['name'] %}
+    <link href="/plugins/file?name={{menu['name']}}&v={{config.version}}&f={{menu['css_path']}}" rel="stylesheet" />
+    {% endif %}
+    {% endfor %}
+
+    {% for menu in data['hook_global_static'] %}
+    {% if menu['css_path'] %}
+    <link href="/plugins/file?name={{menu['name']}}&v={{config.version}}&f={{menu['css_path']}}" rel="stylesheet" />
+    {% endif %}
+    {% endfor %}
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar"
+                aria-expanded="false" aria-controls="navbar">
+                <span class="sr-only">Buka menu</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/" style="margin-right:20px;">MIT Panel</a>
+        </div>
+        <div id="navbar" class="collapse navbar-collapse">
+            <ul class="nav navbar-nav">
+                <li class="nav-item">
+                    <div id="task" class="task cw" onclick="messageBox();"></div>
+                </li>
+            </ul>
+            <ul class="nav navbar-nav navbar-right" style="margin-right:10px;">
+                <li class="nav-item"><a href="/">Beranda</a></li>
+                <li class="nav-item"><a href="/site">Situs</a></li>
+                <li class="nav-item"><a href="/control">Monitor</a></li>
+                <li class="nav-item"><a href="/firewall">Keamanan</a></li>
+                <li class="nav-item"><a href="/files">Kelola Berkas</a></li>
+                <li class="nav-item"><a href="/crontab">Penjadwalan</a></li>
+                {% for menu in data['hook_menu'] %}
+                <li class="nav-item"><a href="/plugins/menu?tag={{menu['name']}}">{{menu['title']}}</a></li>
+                {% endfor %}
+                <li class="nav-item"><a href="/soft">Aplikasi</a></li>
+                <li class="nav-item"><a href="/config">Pengaturan</a></li>
+                <li class="nav-item"><a href="javascript:;" id="signout">Keluar</a></li>
+            </ul>
+        </div><!--/.nav-collapse -->
+    </nav>
+    <style>
+        .navbar-inverse {
+            background-color: #0f172a !important;
+            border: none !important;
+            box-shadow: var(--shadow);
+            min-height: 60px;
+        }
+
+        .navbar-inverse .navbar-brand {
+            color: #f8fafc !important;
+            font-weight: 700;
+            font-size: 20px;
+            line-height: 30px;
+        }
+
+        .navbar-inverse .navbar-nav>li>a {
+            color: #94a3b8 !important;
+            font-weight: 500;
+            transition: all 0.2s;
+            line-height: 30px;
+        }
+
+        .navbar-inverse .navbar-nav>li>a:hover {
+            color: #f8fafc !important;
+            background-color: #1e293b !important;
+        }
+
+        .navbar-inverse .navbar-nav>.active>a {
+            background-color: var(--primary) !important;
+            color: #fff !important;
+        }
+
+        @media (max-width: 767px) {
+            .navbar-collapse {
+                background-color: #0f172a !important;
+                border-top: 1px solid #1e293b !important;
+                margin-top: 0;
+            }
+
+            .navbar-nav>li>a {
+                padding-left: 20px !important;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .navbar-nav>li>a {
+                padding-top: 15px;
+                padding-bottom: 15px;
+            }
+        }
+    </style>
+
+    <div class="bt-warp bge6">
+        <div id="container" class="container-fluid">
+            <button style="display: none;" id="mit_copys" class="mit_copy" data-clipboard-text=""></button>
+            <link rel="stylesheet" href="/static/build/xterm.css?v={{config.version}}">
+            <link rel="stylesheet" href="/static/build/addons/fullscreen/fullscreen.css?v={{config.version}}">
+            <script src="/static/js/jquery-1.10.2.min.js"></script>
+            <script src="/static/js/bootstrap.min.js"></script>
+            <script src="/static/layer/layer.js"></script>
+            <script src="/static/js/jquery.fly.min.js"></script>
+            <script src="/static/js/clipboard.min.js"></script>
+            <script src="/static/build/xterm.js"></script>
+            <script src="/static/build/addons/attach/attach.js"></script>
+            <script src="/static/build/addons/fit/fit.js"></script>
+            <script src="/static/build/addons/fullscreen/fullscreen.js"></script>
+            <script src="/static/js/socket.io.min.js"></script>
+            <script src="/static/build/addons/winptyCompat/winptyCompat.js"></script>
+            <script src="/static/js/term-websocketio.js"></script>
+            <script src="/static/app/upload.js?v={{config.version}}"></script>
+            <script src="/static/app/public.js?v={{config.version}}"></script>
+            <script src="/static/js/echarts.min.js"></script>
+            <script src="/static/js/jquery.dragsort-0.5.2.min.js"></script>
+            <script src="/static/js/xm-select.js"></script>
+
+            {% block content %}{% endblock %}
+            <div class="footer bgw"
+                style="margin-top: 0px; position: static !important; clear: both; border-top: 1px solid var(--border-color); padding: 25px; text-align: center; color: var(--text-muted);">
+                MIT Panel &copy; 2018 - 2026.
+            </div>
+        </div>
+    </div>
+</body>
+
+<script type="text/javascript">
+    var MIT_ROOT_PATH = '{{data.root_path}}';
+</script>
+<script type="text/javascript">
+
+    (function ($) {
+        $.getUrlParam = function (name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]); return null;
+        }
+    })(jQuery);
+
+    function getUrlPath() {
+        var thisUrl = window.location.href;
+        var pathArr = thisUrl.split('/');
+        return pathArr[pathArr.length - 1];
+    }
+    var thisPath = getUrlPath();
+    if (thisPath.indexOf('?') > -1) {
+        var tag = $.getUrlParam('tag');
+        if (tag != undefined) {
+            $('#memuAplugins_' + tag).css('background-color', '#2c3138');
+        } else {
+            $('#memuA').css('background-color', '#f2f2f2');
+        }
+    } else {
+        if (thisPath != undefined) {
+            $('#memuA' + thisPath).css('background-color', '#2c3138');
+        } else {
+            $('#memuA').css('background-color', '#f2f2f2');
+        }
+    }
+</script>
+<script src="/static/codemirror/lib/codemirror.js?v={{config.version}}"></script>
+<script src="/static/codemirror/addon/edit/editAll.js?v={{config.version}}"></script>
+<script src="/static/codemirror/mode/modeAll.js?v={{config.version}}"></script>
+<script src="/static/codemirror/addon/dialog/dialog.js?v={{config.version}}"></script>
+<script src="/static/codemirror/addon/search/search.js?v={{config.version}}"></script>
+<script src="/static/codemirror/addon/scroll/annotatescrollbar.js?v={{config.version}}"></script>
+<script src="/static/laydate/laydate.js?v={{config.version}}"></script>
+
+{% for menu in data['hook_menu'] %}
+{% if menu['js_path'] and data['hook_tag'] == menu['name'] %}
+<script src="/plugins/file?name={{menu['name']}}&f={{menu['js_path']}}&v={{config.version}}"></script>
+{% endif %}
+{% endfor %}
+
+{% for menu in data['hook_global_static'] %}
+{% if menu['js_path'] %}
+<script src="/plugins/file?name={{menu['name']}}&f={{menu['js_path']}}&v={{config.version}}"></script>
+{% endif %}
+{% endfor %}
+
+</html>

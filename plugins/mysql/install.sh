@@ -1,0 +1,78 @@
+#!/bin/bash
+PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin:/opt/homebrew/bin
+export PATH
+
+# Pengaturan manual master-slave
+# https://www.cnblogs.com/whiteY/p/17331882.html
+
+# cd ${rootPath}/plugins/mysql && bash install.sh install 5.5
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py try_slave_sync_bugfix {}
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py do_full_sync  {"db":"xxx","sign":"","begin":1}
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py sync_database_repair  {"db":"xxx","sign":""}
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py init_slave_status
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py install_pre_inspection
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py set_slave_status {"close":"change"}
+# cd ${rootPath} && source bin/activate && python3 plugins/mysql/index.py set_root_pwd {"password":"root","force":"2"}
+DIR=$(cd "$(dirname "$0")"; pwd)
+curPath=$DIR
+rootPath=$(dirname "$(dirname "$DIR")")
+serverPath=$(dirname "$rootPath")
+export rootPath
+export serverPath
+
+if [ -f ${rootPath}/bin/activate ];then
+	source ${rootPath}/bin/activate
+fi
+
+action=$1
+type=$2
+
+if id mysql &> /dev/null ;then 
+    echo "mysql UID is `id -u mysql`"
+    echo "mysql Shell is `grep "^mysql:" /etc/passwd |cut -d':' -f7 `"
+else
+    groupadd mysql
+	useradd -g mysql -s /usr/sbin/nologin mysql
+fi
+
+if [ "${2}" == "" ];then
+	echo 'Skrip instalasi tidak ditemukan...'
+	exit 0
+fi 
+
+if [ ! -d $curPath/versions/$2 ];then
+	echo 'Skrip instalasi 2 tidak ditemukan...'
+	exit 0
+fi
+
+if [ "${action}" == "install" ] && [ -d $serverPath/mysql ];then
+	exit 0
+fi
+
+if [ "${action}" == "uninstall" ];then
+	
+	if [ -f /usr/lib/systemd/system/mysql.service ] || [ -f /lib/systemd/system/mysql.service ];then
+		systemctl stop mysql
+		systemctl disable mysql
+		rm -rf /usr/lib/systemd/system/mysql.service
+		rm -rf /lib/systemd/system/mysql.service
+		systemctl daemon-reload
+	fi
+
+	if [ -f $serverPath/mysql/init.d/mysql ];then
+		$serverPath/mysql/init.d/mysql stop
+	fi
+
+	if [ -f /etc/init.d/mysql ];then
+		/etc/init.d/mysql stop
+		rm -rf /etc/init.d/mysql
+	fi
+fi
+
+sh -x $curPath/versions/$2/install.sh $1
+
+if [ "${action}" == "install" ] && [ -d $serverPath/mysql ];then
+	#Inisialisasi 
+	cd ${rootPath} && python3 ${rootPath}/plugins/mysql/index.py start ${type}
+	cd ${rootPath} && python3 ${rootPath}/plugins/mysql/index.py initd_install ${type}
+fi

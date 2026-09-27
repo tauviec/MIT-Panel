@@ -1,0 +1,1131 @@
+<div class="waf-dashboard-container">
+    <!-- Top Header / Navigation -->
+    <div class="waf-header">
+        <div class="date-selector">
+            <button class="btn-date">Yesterday</button>
+            <button class="btn-date active">Today</button>
+            <div class="custom-date" id="select_date_btn" style="position:relative;">
+                <span id="date_range_label" style="pointer-events: none;">Select Date</span> <i
+                    class="glyphicon glyphicon-calendar" style="pointer-events: none;"></i>
+                <span id="laydate_dummy"
+                    style="position:absolute; bottom:0; left:0; width:100%; height:1px; visibility:hidden;"></span>
+            </div>
+        </div>
+        <div class="refresh-btn">
+            <i class="glyphicon glyphicon-refresh"></i>
+        </div>
+    </div>
+
+    <div class="waf-content">
+        <!-- Left Sidebar (Stats & Small Charts) -->
+        <div class="waf-left-col">
+            <!-- Stat Cards -->
+            <div class="waf-card stat-card blue">
+                <div class="stat-header">
+                    <span class="dot"></span> Request
+                </div>
+                <div class="stat-value" id="total_requests">0</div>
+                <div class="stat-trend text-muted">Real-time total</div>
+                <div class="stat-footer text-muted">Across all sites</div>
+                <div class="bg-icon"><i class="glyphicon glyphicon-globe"></i></div>
+            </div>
+
+            <div class="waf-card stat-card red">
+                <div class="stat-header">
+                    <span class="dot"></span> Malicious request
+                </div>
+                <div class="stat-value" id="total_blocked">0</div>
+                <div class="stat-trend text-muted">Total intercepted</div>
+                <div class="stat-footer text-muted">Based on security rules</div>
+                <div class="bg-icon"><i class="glyphicon glyphicon-flash"></i></div>
+            </div>
+
+            <!-- Small Charts -->
+            <div class="waf-card chart-card">
+                <div class="chart-header"><i class="glyphicon glyphicon-stats"></i> Real-time QPS: <span
+                        id="rt_qps_val">0</span>/s</div>
+                <div id="qps_chart" class="small-chart"></div>
+            </div>
+
+            <div class="waf-card chart-card">
+                <div class="chart-header"><i class="glyphicon glyphicon-transfer"></i> Real-time traffic: <span
+                        id="rt_traffic_val">0</span> KB/s
+                </div>
+                <div id="traffic_chart" class="small-chart"></div>
+            </div>
+
+            <div class="waf-card chart-card">
+                <div class="chart-header"><i class="glyphicon glyphicon-time"></i> Real-time origin : <span
+                        id="rt_response_val">0</span>ms
+                </div>
+                <div id="response_chart" class="small-chart"></div>
+            </div>
+
+            <!-- Top 10 Domains -->
+            <div class="waf-card list-card">
+                <div class="list-header"><i class="glyphicon glyphicon-warning-sign"></i> Attacked domains TOP10</div>
+                <div class="list-body" id="attacked_domains">
+                    <!-- Progress bars will go here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Area -->
+        <div class="waf-main-col">
+            <!-- Main Area Chart -->
+            <div class="waf-card main-chart-card">
+                <div class="main-chart-header">
+                    <span><i class="glyphicon glyphicon-stats"></i> Traffic filtering request chart</span>
+                    <div class="chart-legend">
+                        <span class="legend-item"><span class="dot green"></span> Total requests</span>
+                        <span class="legend-item"><span class="dot blue"></span> After filtering</span>
+                    </div>
+                </div>
+                <div id="main_request_chart" style="height: 250px;"></div>
+            </div>
+
+            <!-- Globe & IP Table Section -->
+            <div class="waf-card map-card">
+                <div class="map-header">
+                    <span><i class="glyphicon glyphicon-globe"></i> Access/Block Map <i
+                            class="glyphicon glyphicon-question-sign" style="color:#ff9900"></i></span>
+                </div>
+                <div class="map-body">
+                    <div class="map-left-actions">
+                        <div class="btn-group-pill" id="view_type_btns">
+                            <button class="btn-pill active" onclick="switchView('3D')">3D</button>
+                            <button class="btn-pill" onclick="switchView('2D')">2D</button>
+                        </div>
+                        <span class="ml10 text-muted f12">(*Only shows TOP 5 coordinates)</span>
+                        <div class="btn-group-pill ml30" id="map_type_btns">
+                            <button class="btn-pill" onclick="switchMapTable('requests')">Requests</button>
+                            <button class="btn-pill active" onclick="switchMapTable('blocks')">Blocks</button>
+                        </div>
+                    </div>
+                    <div class="map-visual-container">
+                        <div id="globe_container" style="width: 55%; height: 450px; float: left; position: relative;">
+                            <div class="globe-halo"></div>
+                            <div id="map_legend"
+                                style="display:none; position: absolute; bottom: 20px; left: 20px; font-size: 12px; color: #64748b;">
+                                Low <span
+                                    style="display:inline-block; width: 40px; height: 8px; background: linear-gradient(to right, #e2e8f0, #2ecc71); margin: 0 10px; border-radius: 4px;"></span>
+                                High
+                            </div>
+                        </div>
+                        <div class="ip-table-wrapper" style="width: 45%; float: left;">
+                            <div class="ip-table-box">
+                                <table class="table f12 mb0">
+                                    <thead id="ip_table_head">
+                                        <tr>
+                                            <th>Attack IP</th>
+                                            <th class="text-center">Attack times</th>
+                                            <th>IP attribution</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="attack_ip_list">
+                                        <!-- IP list will be loaded dynamically -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom Rankings -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="waf-card list-card">
+                        <div class="list-header"><span><i class="glyphicon glyphicon-list-alt"></i> Traffic ranking
+                                TOP10 <i class="glyphicon glyphicon-question-sign" style="color:#ff9900"></i></span> <a
+                                href="#" class="f12">More>></a></div>
+                        <div class="list-body" id="traffic_ranking"></div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="waf-card list-card">
+                        <div class="list-header"><span><i class="glyphicon glyphicon-file"></i> Visited pages TOP10 <i
+                                    class="glyphicon glyphicon-question-sign" style="color:#ff9900"></i></span> <a
+                                href="#" class="f12">More>></a></div>
+                        <div class="list-body" id="visited_pages"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dashboard Styles */
+    .waf-dashboard-container {
+        background-color: #f4f7fa;
+        padding: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        color: #333;
+    }
+
+    .waf-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        align-items: center;
+    }
+
+    .date-selector {
+        display: flex;
+        background: #fff;
+        border-radius: 6px;
+        padding: 3px;
+        border: 1px solid #e0e6ed;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .btn-date {
+        border: none;
+        background: none;
+        padding: 6px 18px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 13px;
+        transition: all 0.2s;
+    }
+
+    .btn-date.active {
+        background-color: #3498db;
+        color: #fff;
+    }
+
+    .custom-date {
+        padding: 6px 18px;
+        border-left: 1px solid #eee;
+        color: #666;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border-radius: 0 4px 4px 0;
+    }
+
+    .custom-date.active {
+        background-color: #3498db;
+        color: #fff;
+    }
+
+    .refresh-btn {
+        background: #fff;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        border: 1px solid #e0e6ed;
+        cursor: pointer;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
+    .waf-content {
+        display: flex;
+        gap: 20px;
+    }
+
+    .waf-left-col {
+        width: 280px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .waf-main-col {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .waf-card {
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(0, 0, 0, 0.02);
+    }
+
+    .stat-card {
+        height: 150px;
+    }
+
+    .stat-card .stat-header {
+        font-size: 14px;
+        color: #5a6b7d;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+    }
+
+    .stat-card .dot {
+        width: 6px;
+        height: 14px;
+        border-radius: 2px;
+        margin-right: 12px;
+    }
+
+    .stat-card.blue .dot {
+        background-color: #3498db;
+    }
+
+    .stat-card.red .dot {
+        background-color: #e74c3c;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        color: #1a2b3c;
+    }
+
+    .stat-trend {
+        font-size: 13px;
+        margin-bottom: 6px;
+        font-weight: 500;
+    }
+
+    .stat-trend.down {
+        color: #e74c3c;
+    }
+
+    .stat-trend.up {
+        color: #2ecc71;
+    }
+
+    .stat-footer {
+        font-size: 12px;
+        color: #94a3b8;
+    }
+
+    .stat-card .bg-icon {
+        position: absolute;
+        right: 15px;
+        bottom: 15px;
+        font-size: 60px;
+        color: rgba(0, 0, 0, 0.03);
+        pointer-events: none;
+    }
+
+    .chart-header,
+    .main-chart-header,
+    .map-header,
+    .list-header {
+        font-size: 15px;
+        font-weight: 600;
+        color: #1e293b;
+        margin-bottom: 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .small-chart {
+        height: 100px;
+    }
+
+    .chart-legend {
+        display: flex;
+        gap: 15px;
+        font-size: 12px;
+        font-weight: normal;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .legend-item .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        margin-right: 8px;
+    }
+
+    .dot.green {
+        background-color: #2ecc71;
+    }
+
+    .dot.blue {
+        background-color: #3498db;
+    }
+
+    .dot.lightblue {
+        background-color: #81ecec;
+    }
+
+    .dot.aqua {
+        background-color: #00cec9;
+    }
+
+    .list-item {
+        display: flex;
+        align-items: center;
+        margin-bottom: 15px;
+    }
+
+    .list-rank {
+        width: 24px;
+        height: 24px;
+        background: #f1f5f9;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        margin-right: 15px;
+        font-weight: 700;
+        color: #64748b;
+    }
+
+    .list-rank.top {
+        background: #2ecc71;
+        color: #fff;
+    }
+
+    .list-info {
+        flex: 1;
+    }
+
+    .list-name {
+        font-size: 13px;
+        margin-bottom: 5px;
+        display: flex;
+        justify-content: space-between;
+        color: #334155;
+    }
+
+    .progress {
+        height: 8px;
+        margin-bottom: 0;
+        background-color: #f1f5f9;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+
+    .progress-bar {
+        background-color: #2ecc71;
+    }
+
+    /* Pill Actions */
+    .map-left-actions {
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+    }
+
+    .btn-group-pill {
+        display: flex;
+        background: #f8fafc;
+        padding: 3px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .btn-pill {
+        border: none;
+        background: none;
+        padding: 4px 16px;
+        border-radius: 18px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #64748b;
+    }
+
+    .btn-pill.active {
+        background-color: #3498db;
+        color: #fff;
+        box-shadow: 0 2px 4px rgba(52, 152, 219, 0.3);
+    }
+
+    .ip-table-wrapper {
+        padding-left: 20px;
+    }
+
+    .ip-table-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 15px;
+        border: none;
+    }
+
+    .ip-table-box thead th {
+        border-top: none;
+        color: #475569;
+        font-weight: 600;
+        padding-bottom: 15px;
+    }
+
+    .ip-table-box tbody td {
+        padding: 12px 8px;
+        border-top: 1px solid #f1f5f9;
+        color: #334155;
+    }
+
+    /* Pill Switch */
+    .pill-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 22px;
+        vertical-align: middle;
+    }
+
+    .pill-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #cbd5e1;
+        transition: .4s;
+    }
+
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+    }
+
+    input:checked+.slider {
+        background-color: #3498db;
+    }
+
+    input:checked+.slider:before {
+        transform: translateX(24px);
+    }
+
+    .slider.round {
+        border-radius: 34px;
+    }
+
+    .slider.round:before {
+        border-radius: 50%;
+    }
+
+    .globe-halo {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 480px;
+        height: 480px;
+        border-radius: 50%;
+        background:
+            radial-gradient(circle, transparent 65%, rgba(52, 152, 219, 0.05) 66%, rgba(52, 152, 219, 0.08) 68%, transparent 69%),
+            radial-gradient(circle, transparent 72%, rgba(52, 152, 219, 0.03) 73%, rgba(52, 152, 219, 0.06) 76%, transparent 77%);
+        pointer-events: none;
+        z-index: 0;
+    }
+</style>
+
+<script src="/static/js/echarts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/echarts-gl/dist/echarts-gl.min.js"></script>
+
+<script type="text/javascript">
+
+    function initSmallChart(id, color, data) {
+        const chart = echarts.init(document.getElementById(id));
+        const option = {
+            grid: { left: 0, right: 0, top: 10, bottom: 0 },
+            xAxis: { type: 'category', show: false },
+            yAxis: { type: 'value', show: false },
+            series: [{
+                type: 'line',
+                smooth: true,
+                symbol: 'none',
+                areaStyle: { opacity: 0.15 },
+                lineStyle: { width: 3 },
+                color: color,
+                data: data || [2, 6, 3, 5, 2, 8, 4, 7, 3, 9, 2, 6]
+            }]
+        };
+        chart.setOption(option);
+    }
+
+    function initAllSmallCharts() {
+        initSmallChart('qps_chart', '#2ecc71');
+        initSmallChart('traffic_chart', '#2ecc71');
+        initSmallChart('response_chart', '#2ecc71');
+    }
+
+    let mainChartInstance = null;
+    function initMainChart(chartData) {
+        if (!mainChartInstance) {
+            mainChartInstance = echarts.init(document.getElementById('main_request_chart'));
+        }
+
+        const labels = chartData ? chartData.labels : ['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'];
+        const totalData = chartData ? chartData.total : [150, 130, 160, 140, 180, 150, 170, 200, 180, 220, 250, 230, 210, 190, 200, 230, 260, 240, 220, 250, 280, 270, 260, 290];
+        const blockedData = chartData ? chartData.blocked : [10, 5, 8, 3, 12, 7, 9, 15, 12, 18, 20, 15, 10, 8, 12, 15, 18, 16, 14, 17, 22, 20, 18, 25];
+
+        const option = {
+            tooltip: { trigger: 'axis', backgroundColor: 'rgba(255, 255, 255, 0.9)', textStyle: { color: '#333' } },
+            grid: { left: '3%', right: '4%', bottom: '3%', top: '10%', containLabel: true },
+            xAxis: {
+                type: 'category',
+                boundaryGap: false,
+                data: labels,
+                axisLine: { lineStyle: { color: '#e2e8f0' } },
+                axisLabel: { color: '#64748b', fontSize: 10 }
+            },
+            yAxis: {
+                type: 'value',
+                axisLine: { show: false },
+                axisTick: { show: false },
+                splitLine: { lineStyle: { color: '#f1f5f9' } },
+                axisLabel: { color: '#64748b' }
+            },
+            series: [
+                {
+                    name: 'Total requests',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'none',
+                    data: totalData,
+                    color: '#2ecc71',
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(46, 204, 113, 0.2)' },
+                            { offset: 1, color: 'rgba(46, 204, 113, 0)' }
+                        ])
+                    },
+                    lineStyle: { width: 3 }
+                },
+                {
+                    name: 'After filtering',
+                    type: 'line',
+                    smooth: true,
+                    symbol: 'none',
+                    data: blockedData,
+                    color: '#3498db',
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: 'rgba(52, 152, 219, 0.2)' },
+                            { offset: 1, color: 'rgba(52, 152, 219, 0)' }
+                        ])
+                    },
+                    lineStyle: { width: 3 }
+                }
+            ]
+        };
+        mainChartInstance.setOption(option);
+    }
+
+    let worldGeoJson = null;
+    let currentMapChart = null;
+
+    let currentViewType = '3D';
+    function switchView(type) {
+        currentViewType = type;
+        $('#view_type_btns .btn-pill').removeClass('active');
+
+        // Dispose current chart to ensure a clean switch
+        if (currentMapChart) {
+            currentMapChart.dispose();
+            currentMapChart = null;
+        }
+
+        const container = document.getElementById('globe_container');
+        const mapData = dashboardData ? dashboardData.map_data : null;
+
+        if (type === '3D') {
+            $('#view_type_btns .btn-pill:first').addClass('active');
+            $('.globe-halo').show();
+            $('#map_legend').hide();
+            initGlobe(mapData);
+        } else {
+            // Fix for 2D button class
+            $('#view_type_btns .btn-pill:last').addClass('active');
+            $('.globe-halo').hide();
+            $('#map_legend').show();
+            init2DMap(mapData);
+        }
+    }
+
+    function init2DMap(mapData) {
+        const mapContainer = document.getElementById('globe_container');
+        currentMapChart = echarts.init(mapContainer);
+
+        const showMap = (geoJson) => {
+            echarts.registerMap('world', geoJson);
+
+            if (!dashboardData) return;
+            const server_location = dashboardData.server_location || [110, -5];
+            const scatterData = mapData ? mapData.map(item => ({
+                name: item.location || item.ip,
+                value: [item.lng, item.lat, item.count]
+            })) : [];
+
+            const option = {
+                backgroundColor: '#ffffff',
+                visualMap: {
+                    show: false,
+                    min: 0,
+                    max: 1000,
+                    inRange: { color: ['#f1f5f9', '#2ecc71'] }
+                },
+                geo: {
+                    map: 'world',
+                    roam: false,
+                    emphasis: { label: { show: false }, itemStyle: { areaColor: '#2ecc71' } },
+                    itemStyle: { areaColor: '#f1f5f9', borderColor: '#e2e8f0' }
+                },
+                series: [
+                    {
+                        type: 'scatter',
+                        coordinateSystem: 'geo',
+                        symbol: 'pin',
+                        symbolSize: 40,
+                        data: scatterData,
+                        label: {
+                            show: true,
+                            formatter: '{@[2]}',
+                            color: '#fff',
+                            fontSize: 10,
+                            position: 'inside'
+                        }
+                    },
+                    {
+                        type: 'lines',
+                        coordinateSystem: 'geo',
+                        zlevel: 1,
+                        effect: {
+                            show: true,
+                            period: 6,
+                            trailLength: 0.7,
+                            color: '#e74c3c',
+                            symbolSize: 3
+                        },
+                        lineStyle: {
+                            color: '#e74c3c',
+                            width: 1,
+                            curveness: 0.2
+                        },
+                        data: mapData ? mapData.map(item => ({
+                            coords: [
+                                [item.lng, item.lat],
+                                server_location
+                            ]
+                        })) : []
+                    }
+                ]
+            };
+            currentMapChart.setOption(option);
+        };
+
+        if (worldGeoJson) {
+            showMap(worldGeoJson);
+        } else {
+            $.getJSON('/static/img/world.json', function (data) {
+                worldGeoJson = data;
+                showMap(data);
+            });
+        }
+    }
+
+    function initGlobe(mapData) {
+        const globeContainer = document.getElementById('globe_container');
+
+        const renderGlobe = (geoJson) => {
+            echarts.registerMap('world', geoJson);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = 4096;
+            canvas.height = 2048;
+            const mapChart = echarts.init(canvas);
+
+            mapChart.setOption({
+                backgroundColor: '#e0f2fe',
+                geo: {
+                    map: 'world',
+                    left: 0, top: 0, right: 0, bottom: 0,
+                    boundingCoords: [[-180, 90], [180, -90]],
+                    itemStyle: {
+                        areaColor: '#2ecc71',
+                        borderColor: '#2ecc71'
+                    }
+                }
+            });
+
+            currentMapChart = echarts.init(globeContainer);
+
+            if (!dashboardData) return;
+            const server_location = dashboardData.server_location || [110, -5];
+            const linesData = mapData ? mapData.map(item => [
+                [item.lng, item.lat],
+                server_location
+            ]) : [
+                [[10, 50], server_location],
+                [[-70, 40], server_location]
+            ];
+
+            const option = {
+                backgroundColor: 'transparent',
+                globe: {
+                    baseTexture: canvas,
+                    shading: 'lambert',
+                    environment: 'none',
+                    light: {
+                        main: { intensity: 1.5, shadow: false, alpha: 40, beta: -30 },
+                        ambient: { intensity: 0.8 }
+                    },
+                    viewControl: {
+                        autoRotate: true,
+                        autoRotateSpeed: 5,
+                        targetCoord: (dashboardData && dashboardData.server_location) ? dashboardData.server_location : [110, -5],
+                        distance: 200,
+                        alpha: 30,
+                        zoomSensitivity: 0
+                    },
+                    postEffect: { enable: false },
+                    atmosphere: {
+                        show: true,
+                        offset: 5,
+                        glowPower: 2,
+                        innerGlowPower: 2,
+                        color: '#93c5fd'
+                    }
+                },
+                series: [{
+                    type: 'lines3D',
+                    coordinateSystem: 'globe',
+                    effect: {
+                        show: true,
+                        trailWidth: 6,
+                        trailLength: 0.3,
+                        trailColor: '#ff0000',
+                        trailOpacity: 1
+                    },
+                    blendMode: 'lighter',
+                    lineStyle: { width: 2, color: '#ffa502', opacity: 0.4 },
+                    data: linesData
+                }]
+            };
+            currentMapChart.setOption(option);
+
+            window.addEventListener('resize', function () {
+                if (currentMapChart) currentMapChart.resize();
+            });
+        };
+
+        if (worldGeoJson) {
+            renderGlobe(worldGeoJson);
+        } else {
+            $.getJSON('/static/img/world.json', function (data) {
+                worldGeoJson = data;
+                renderGlobe(data);
+            });
+        }
+    }
+
+    let dashboardData = null;
+
+    function switchMapTable(type) {
+        if (!dashboardData) return;
+
+        const ipRank = dashboardData.ip_ranking || [];
+
+        if (type === 'requests') {
+            $('#map_type_btns .btn-pill:first').addClass('active').siblings().removeClass('active');
+            $('#ip_table_head').html(`<tr>
+                <th>Request IP</th>
+                <th class="text-center">Requests</th>
+                <th class="text-center">Traffic</th>
+                <th>IP attribution</th>
+            </tr>`);
+
+            let html = '';
+            ipRank.forEach(item => {
+                html += `<tr>
+                    <td><a href="javascript:showBlockIPModal('${item.ip}')" class="btlink">${item.ip}</a></td>
+                    <td class="text-center">${item.count}</td>
+                    <td class="text-center">--</td>
+                    <td>${item.location || 'Unknown'}</td>
+                </tr>`;
+            });
+            $('#attack_ip_list').html(html || '<tr><td colspan="4" class="text-center">No data</td></tr>');
+
+        } else {
+            $('#map_type_btns .btn-pill:last').addClass('active').siblings().removeClass('active');
+            $('#ip_table_head').html(`<tr>
+                <th>Attack IP</th>
+                <th class="text-center">Attack times</th>
+                <th>IP attribution</th>
+            </tr>`);
+
+            let ipHtml = '';
+            ipRank.forEach(ip => {
+                ipHtml += `<tr>
+                    <td><a href="javascript:showBlockIPModal('${ip.ip}')" class="btlink">${ip.ip}</a></td>
+                    <td class="text-center">${ip.count}</td>
+                    <td>${ip.location || 'Unknown'}</td>
+                </tr>`;
+            });
+            $('#attack_ip_list').html(ipHtml || '<tr><td colspan="3" class="text-center">No data</td></tr>');
+        }
+    }
+
+    function showBlockIPModal(ip) {
+        const c_class = ip.split('.').slice(0, 3).join('.') + '.0/24';
+        layer.open({
+            type: 1,
+            title: 'Tambahkan ke daftar hitam IP',
+            area: '420px',
+            closeBtn: 1,
+            shadeClose: true,
+            content: `
+                <div class="pd20">
+                    <div style="display:flex; align-items:center; margin-bottom:20px;">
+                        <i class="glyphicon glyphicon-warning-sign" style="font-size:40px; color:#f39c12; margin-right:20px;"></i>
+                        <div style="font-size:16px;">Apakah Anda ingin menambahkan <span style="color:#e74c3c; font-weight:bold;">${ip}</span> ke daftar hitam IP?</div>
+                    </div>
+                    <div style="margin-left:60px;">
+                        <label style="font-weight:normal; cursor:pointer;">
+                            <input type="checkbox" id="block_c_class" style="vertical-align:middle; margin-top:-2px;"> Blokir seluruh segmen IP ini? (${c_class})
+                        </label>
+                    </div>
+                    <div class="text-right mt20" style="margin-top:30px;">
+                        <button class="btn btn-default btn-sm" onclick="layer.closeAll()">Batal</button>
+                        <button class="btn btn-primary btn-sm" id="confirm_block_btn">Konfirmasi</button>
+                    </div>
+                </div>
+            `,
+            success: function(layero, index) {
+                $('#confirm_block_btn').click(function() {
+                    const isCClass = $('#block_c_class').is(':checked');
+                    doBlockIP(ip, isCClass, index);
+                });
+            }
+        });
+    }
+
+    function doBlockIP(ip, isCClass, layerIndex) {
+        let start_ip = ip;
+        let end_ip = ip;
+        
+        if (isCClass) {
+            const parts = ip.split('.');
+            start_ip = `${parts[0]}.${parts[1]}.${parts[2]}.0`;
+            end_ip = `${parts[0]}.${parts[1]}.${parts[2]}.255`;
+        }
+
+        const loadT = layer.msg('Sedang memblokir IP...', { icon: 16, time: 0, shade: [0.3, '#000'] });
+        $.post('/plugins/run', { 
+            name: 'op_waf', 
+            func: 'add_ip_black', 
+            args: JSON.stringify({ start_ip: start_ip, end_ip: end_ip }) 
+        }, function(res) {
+            layer.close(loadT);
+            let rdata = res;
+            if (typeof res === 'string') {
+                try { rdata = JSON.parse(res); } catch(e) {}
+            }
+            if (rdata.data && typeof rdata.data === 'string') {
+                try { rdata = JSON.parse(rdata.data); } catch(e) {}
+            }
+
+            if (rdata.status) {
+                layer.close(layerIndex);
+                layer.msg(rdata.msg || 'Berhasil', { icon: 1 });
+            } else {
+                layer.msg(rdata.msg || 'Gagal memblokir IP', { icon: 2 });
+            }
+        });
+    }
+
+    function loadDashboardData(dateStr) {
+        const args = {};
+        if (dateStr) {
+            if (dateStr.indexOf(' - ') > -1) {
+                const parts = dateStr.split(' - ');
+                args.start_date = parts[0].trim();
+                args.end_date = parts[1].trim();
+            } else {
+                args.date = dateStr.trim();
+            }
+        }
+        $.post('/plugins/run', { name: 'op_waf', func: 'get_index_data', args: JSON.stringify(args) }, function (res) {
+            if (!res || !res.status) {
+                return;
+            }
+
+            let data = res.data;
+            if (typeof data === 'string') {
+                try {
+                    data = JSON.parse(data);
+                } catch (e) { return; }
+            }
+
+            if (!data) return;
+
+            // Handle double-nested data from Python's returnJson
+            if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+                data = data.data;
+            }
+
+            dashboardData = data;
+
+            // Update Top Counters
+            const overview = data.overview || { total: 0, blocked: 0 };
+            $('#total_requests').text(overview.total.toLocaleString());
+            $('#total_blocked').text(overview.blocked.toLocaleString());
+
+            // Update Real-time Stats
+            $('#rt_qps_val').text(overview.rt_qps || 0);
+            $('#rt_traffic_val').text(overview.rt_traffic || 0);
+            $('#rt_response_val').text(overview.rt_response || 0);
+
+            // Update Small Charts
+            if (overview.rt_qps_trend) initSmallChart('qps_chart', '#2ecc71', overview.rt_qps_trend);
+            if (overview.rt_traffic_trend) initSmallChart('traffic_chart', '#3498db', overview.rt_traffic_trend);
+            if (overview.rt_response_trend) initSmallChart('response_chart', '#1abc9c', overview.rt_response_trend);
+
+            // Domains Ranking
+            let domainHtml = '';
+            const domainRank = data.domain_ranking || [];
+            const maxDomain = domainRank.length > 0 ? (domainRank[0].count || 1) : 1;
+            domainRank.forEach((d, i) => {
+                const percent = Math.min((d.count / maxDomain) * 100, 100);
+                domainHtml += `<div class="list-item">
+                    <div class="list-rank ${i < 3 ? 'top' : ''}">${i + 1}</div>
+                    <div class="list-info">
+                        <div class="list-name">${d.domain} <span>${d.count}</span></div>
+                        <div class="progress"><div class="progress-bar" style="width: ${percent}%"></div></div>
+                    </div>
+                </div>`;
+            });
+            $('#attacked_domains').html(domainHtml || '<div class="text-center pd20">No data yet</div>');
+
+            // Traffic Ranking (Sites)
+            let siteHtml = '';
+            const siteRank = data.site_ranking || [];
+            const maxSite = siteRank.length > 0 ? (siteRank[0].total || 1) : 1;
+            siteRank.forEach((s, i) => {
+                const percent = Math.min((s.total / maxSite) * 100, 100);
+                siteHtml += `<div class="list-item">
+                    <div class="list-rank ${i < 3 ? 'top' : ''}">${i + 1}</div>
+                    <div class="list-info">
+                        <div class="list-name">${s.name} <span>${s.total}</span></div>
+                        <div class="progress"><div class="progress-bar" style="width: ${percent}%; background-color: #3498db"></div></div>
+                    </div>
+                </div>`;
+            });
+            $('#traffic_ranking').html(siteHtml || '<div class="text-center pd20">No data yet</div>');
+
+            // Visited Pages
+            let urlHtml = '';
+            const urlRank = data.url_ranking || [];
+            const maxUrl = urlRank.length > 0 ? (urlRank[0].total || 1) : 1;
+            urlRank.forEach((u, i) => {
+                const percent = Math.min((u.total / maxUrl) * 100, 100);
+                urlHtml += `<div class="list-item">
+                    <div class="list-rank ${i < 3 ? 'top' : ''}">${i + 1}</div>
+                    <div class="list-info">
+                        <div class="list-name">${u.name} <span>${u.total}</span></div>
+                        <div class="progress"><div class="progress-bar" style="width: ${percent}%; background-color: #1e293b"></div></div>
+                    </div>
+                </div>`;
+            });
+            $('#visited_pages').html(urlHtml || '<div class="text-center pd20">No data yet</div>');
+
+            // Default view
+            switchMapTable('blocks');
+
+            // Update Map with real data
+            switchView(currentViewType);
+
+            updateMainChart(data);
+        }, 'json');
+    }
+
+    function updateMainChart(data) {
+        if (data && data.chart_data) {
+            initMainChart(data.chart_data);
+        }
+    }
+
+    // Initialize Dashboard
+    $(document).ready(function () {
+        initAllSmallCharts();
+        initMainChart();
+        loadDashboardData();
+
+        // Initialize Laydate using a dummy elem to prevent label from disappearing
+        laydate.render({
+            elem: '#laydate_dummy',
+            eventElem: '#select_date_btn',
+            trigger: 'click',
+            range: true,
+            lang: 'en',
+            format: 'yyyy-MM-dd',
+            theme: '#3498db',
+            done: function (value) {
+                if (value) {
+                    $('.btn-date').removeClass('active');
+                    $('#select_date_btn').addClass('active');
+                    $('#date_range_label').text(value);
+                    loadDashboardData(value);
+                } else {
+                    $('#date_range_label').text('Select Date');
+                    $('#select_date_btn').removeClass('active');
+                    loadDashboardData();
+                }
+            }
+        });
+
+        // Today/Yesterday buttons
+        $('.btn-date').click(function () {
+            $('.btn-date').removeClass('active');
+            $('#select_date_btn').removeClass('active');
+            $(this).addClass('active');
+
+            const d = new Date();
+            if ($(this).text() === 'Yesterday') {
+                d.setDate(d.getDate() - 1);
+            }
+            
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`;
+            
+            // Use range format 'YYYY-MM-DD - YYYY-MM-DD' to ensure backend reliability
+            const rangeStr = `${dateStr} - ${dateStr}`;
+            $('#date_range_label').text(dateStr);
+            loadDashboardData(rangeStr);
+        });
+
+        // Refresh button
+        $('.refresh-btn').click(function () {
+            loadDashboardData();
+        });
+
+        // Initial map view - Default to 3D Globe
+        initGlobe();
+    });
+</script>

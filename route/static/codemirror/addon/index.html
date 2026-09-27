@@ -1,0 +1,13 @@
+<div>
+	<p style="margin-bottom:8px"><span style="display: inline-block; width: 104px;">URL Tujuan</span><input class="bt-input-text" type="text" name="toUrl" value="http://" style="margin-left: 5px;width: 380px;height: 30px;margin-right:10px;" placeholder="Masukkan URL lengkap, contoh: http://www.test.com"></p>
+	<p style="margin-bottom:8px"><span style="display: inline-block; width: 104px;">Domain Pengirim</span><input class="bt-input-text" type="text" name="toDomain" value="$host" style="margin-left: 5px;width: 380px;height: 30px;margin-right:10px;" placeholder="Domain server target, contoh: www.test.com"></p>
+	<p style="margin-bottom:8px"><span style="display: inline-block; width: 104px;">Ganti Konten</span><input class="bt-input-text" type="text" name="sub1" value="" style="margin-left: 5px;width: 182px;height: 30px;margin-right:10px;" placeholder="Teks yang diganti, biarkan kosong"><input class="bt-input-text" type="text" name="sub2" value="" style="margin-left: 5px;width: 183px;height: 30px;margin-right:10px;" placeholder="Ganti menjadi, biarkan kosong"></p>
+	<div class="label-input-group ptb10"><label style="font-weight:normal"><input type="checkbox" name="status" onclick="Proxy('w6.hao.com',1)">Aktifkan Reverse Proxy</label><label style="margin-left: 18px;"><input type="checkbox" name="status" onclick="OpenCache('w6.hao.com',1)">Aktifkan Cache</label></div>
+	<ul class="help-info-text c7 ptb10">
+		<li>URL tujuan harus dapat diakses, jika tidak akan menghasilkan error 502</li>
+		<li>Secara default semua akses domain situs ini akan diteruskan ke server target, pastikan server target telah mengikat domain</li>
+		<li>Jika Anda adalah proxy pasif, silakan masukkan domain situs target pada kolom domain pengirim</li>
+		<li>Jika Anda tidak memerlukan fitur penggantian konten, biarkan saja kosong</li>
+		<li>Cache URL tertentu dapat dibersihkan melalui purge, contoh: http://test.com/purge/test.png</li>
+	</ul>
+</div>

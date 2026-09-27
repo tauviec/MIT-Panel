@@ -1,0 +1,17 @@
+{
+	"title":"phpMyAdmin",
+	"tip":"soft",
+	"name":"phpmyadmin",
+	"type":"Operating environment",
+	"ps":"Famous Web-side MySQL management tool",
+	"to_ver":["5.2.3"],
+	"versions":["5.2.3"],
+	"updates":["5.2.3"],
+	"shell":"install.sh",
+	"checks":"server/phpmyadmin",
+	"path": "server/phpmyadmin",
+	"author":"phpMyAdmin",
+	"home":"https://www.phpmyadmin.net/",
+	"date":"2017-11-24",
+	"pid": "2"
+}

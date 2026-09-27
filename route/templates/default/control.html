@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block content %}
+
+<div class="main-content">
+		<div class="container-fluid" style="padding-bottom: 50px;">
+			<div class="pos-box bgw mtb15">
+				<div class="position f14 c9 pull-left">
+					<a class="plr10 c4" href="/">Beranda</a>/<span class="plr10 c4">Monitoring sistem</span>
+				</div>
+			</div>
+			<div class="safe container-fluid  bgw mtb15 pd15" style="overflow: hidden;">
+				<div class="mr50 pull-left">
+					<div class="ss-text pull-left">
+						<em>Aktifkan monitoring</em>
+						<div class='ssh-item' id="openJK"></div>
+					</div>
+				</div>
+				<div class="mr50 pull-left">
+					<div class="ss-text pull-left">
+						<em>Lama simpan (hari)：</em>
+						<input class="bt-input-text" id="save_day" value="" type="number">
+					</div>
+					<div class="ss-text pull-left" style="margin-left:10px">
+						<button class="btn btn-default btn-sm" type="button" onclick="setControl('save_day',true);">Ubah</button>
+					</div>
+				</div>
+				<div class="mr50 pull-left" style="padding-left:10px; border-left:#ccc 1px solid; margin-right:0">
+					<div class="mr50 pull-left">
+						<div class="ss-text pull-left">
+							<em>Cuma statistik jaringan luar</em>
+							<div class='ssh-item' id="statAll"></div>
+						</div>
+					</div>
+
+					<button class="btn btn-default btn-sm" type="button" onclick="closeControl()">Hapus catatan</button>
+				</div>
+			</div>
+			<div class="control">
+				<div class="col-xs-12 col-sm-12 col-md-12 pull-left pd0 view0">
+					<div class="mb15">
+						<div class="bgw pb15">
+							<div class="title c6 plr15 mb15">
+								<h3 class="c-tit f16">Rata-rata beban</h3>
+								<div class="searcTime pull-right">
+									<span class="tit">Cari rentang：</span>
+									<span class="gt" onclick="Wday(1,'getload')">Kemarin</span>
+									<span class="gt on" onclick="Wday(0,'getload')">Hari ini</span>
+									<span class="gt" onclick="Wday(7,'getload')">7 hari terakhir</span>
+									<span class="gt" onclick="Wday(30,'getload')">30 hari terakhir</span>
+									<div class="ss">
+										<span class="st">Waktu khusus</span>
+										<div class="time">
+											<span class="bt">Rentang tanggal
+												<input id="loadbtn_rtime" class="rtime" type="text" value="2023-07-06 00:00:00 - 2023-08-08 00:00:00">
+											</span>
+											<div class="sbtn loadbtn">Kirim</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="getloadview" style="width:100%; height:330px;"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-xs-12 col-sm-12 col-md-6 pull-left pd0 view1">
+					<div class="pr8">
+						<div class="bgw pb15">
+							<div class="title c6 plr15">
+								<h3 class="c-tit f16">CPU</h3>
+								<div class="searcTime pull-right">
+									<span class="tit">Cari rentang：</span>
+									<span class="gt" onclick="Wday(1,'cpu')">Kemarin</span>
+									<span class="gt on" onclick="Wday(0,'cpu')">Hari ini</span>
+									<span class="gt" onclick="Wday(7,'cpu')">7 hari terakhir</span>
+									<span class="gt" onclick="Wday(30,'cpu')">30 hari terakhir</span>
+									<div class="ss">
+										<span class="st">Waktu khusus</span>
+										<div class="time">
+											<span class="bt">Rentang tanggal
+												<input id="cpubtn_rtime" class="rtime" type="text" value="2023-07-06 00:00:00 - 2023-08-08 00:00:00">
+											</span>
+											<div class="sbtn cpubtn">Kirim</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="cupview" style="width:100%; height:330px"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-xs-12 col-sm-12 col-md-6 pull-left pd0 view2">
+					<div class="pl7">
+						<div class="bgw pb15">
+							<div class="title c6 plr15">
+								<h3 class="c-tit f16">RAM</h3>
+								<div class="searcTime pull-right">
+									<span class="tit">Cari rentang：</span>
+									<span class="gt" onclick="Wday(1,'mem')">Kemarin</span>
+									<span class="gt on" onclick="Wday(0,'mem')">Hari ini</span>
+									<span class="gt" onclick="Wday(7,'mem')">7 hari terakhir</span>
+									<span class="gt" onclick="Wday(30,'mem')">30 hari terakhir</span>
+									<div class="ss">
+										<span class="st">Waktu khusus</span>
+										<div class="time">
+											<span class="bt">Rentang tanggal
+												<input id="membtn_rtime" class="rtime" type="text" value="2023-07-06 00:00:00 - 2023-08-08 00:00:00">
+											</span>
+											<div class="sbtn membtn">Kirim</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="memview" style="width:100%; height:330px"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-xs-12 col-sm-12 col-md-6 pull-left pd0 view1">
+					<div class="pr8">
+						<div class="bgw pb15">
+							<div class="title c6 plr15 mb15">
+								<h3 class="c-tit f16">Disk I/O</h3>
+								<div class="searcTime pull-right">
+									<span class="tit">$data['lan']['S1']</span>
+									<span class="gt" onclick="Wday(1,'disk')">Kemarin</span>
+									<span class="gt on" onclick="Wday(0,'disk')">Hari ini</span>
+									<span class="gt" onclick="Wday(7,'disk')">7 hari terakhir</span>
+									<span class="gt" onclick="Wday(30,'disk')">30 hari terakhir</span>
+									<div class="ss">
+										<span class="st">Waktu khusus</span>
+										<div class="time">
+											<span class="bt">Rentang tanggal
+												<input id="diskbtn_rtime" class="rtime" type="text" value="2023-07-06 00:00:00 - 2023-08-08 00:00:00">
+											</span>
+											<div class="sbtn diskbtn">Kirim</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="diskview" style="width:100%; height:330px"></div>
+						</div>
+					</div>
+				</div>
+				<div class="col-xs-12 col-sm-12 col-md-6 pull-left pd0 view2">
+					<div class="pl7">
+						<div class="bgw pb15">
+							<div class="title c6 plr15 mb15">
+								<h3 class="c-tit f16">Network I/O</h3>
+								<div class="searcTime pull-right">
+									<span class="tit">$data['lan']['S1']</span>
+									<span class="gt" onclick="Wday(1,'network')">Kemarin</span>
+									<span class="gt on" onclick="Wday(0,'network')">Hari ini</span>
+									<span class="gt" onclick="Wday(7,'network')">7 hari terakhir</span>
+									<span class="gt" onclick="Wday(30,'network')">30 hari terakhir</span>
+									<div class="ss">
+										<span class="st">Waktu khusus</span>
+										<div class="time">
+											<span class="bt">Rentang tanggal
+												<input id="networkbtn_rtime" class="rtime" type="text" value="2023-07-06 00:00:00 - 2023-08-08 00:00:00">
+											</span>
+											<div class="sbtn networkbtn">Kirim</div>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div id="network" style="width:100%; height:330px"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<script type="text/javascript" src="/static/laydate/laydate.js?v={{config.version}}"></script>
+<script src="/static/app/control.js?v={{config.version}}"></script>
+
+{% endblock %}

@@ -1,0 +1,584 @@
+# coding: utf-8
+
+import sys
+import os
+import json
+import time
+import threading
+import psutil
+
+if sys.version_info[0] == 2:
+    reload(sys)
+    sys.setdefaultencoding('utf-8')
+
+
+# Get the directory where the script is located
+root_path = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(root_path + "/class/core")
+import mit
+import db
+
+# print sys.path
+
+# cmd = 'ls /usr/local/lib/ | grep python  | cut -d \\  -f 1 | awk \'END {print}\''
+# info = mit.execShell(cmd)
+# p = "/usr/local/lib/" + info[0].strip() + "/site-packages"
+# sys.path.append(p)
+
+
+global pre, timeoutCount, logPath, isTask, oldEdate, isCheck
+pre = 0
+timeoutCount = 0
+isCheck = 0
+oldEdate = None
+
+logPath = root_path + '/tmp/panelExec.log'
+isTask = root_path + '/tmp/panelTask.pl'
+
+if not os.path.exists(root_path + "/tmp"):
+    os.system('mkdir -p ' + root_path + "/tmp")
+
+if not os.path.exists(logPath):
+    os.system("touch " + logPath)
+
+
+def service_cmd(method):
+    cmd = '/etc/init.d/mit'
+    if os.path.exists(cmd):
+        execShell(cmd + ' ' + method)
+        return
+
+    cmd = mit.getRunDir() + '/scripts/init.d/mit'
+    if os.path.exists(cmd):
+        execShell(cmd + ' ' + method)
+        return
+
+
+def mit_async(f):
+    def wrapper(*args, **kwargs):
+        thr = threading.Thread(target=f, args=args, kwargs=kwargs)
+        thr.start()
+    return wrapper
+
+
+@mit_async
+def restartMit():
+    time.sleep(1)
+    cmd = '/etc/init.d/mit'
+    if not os.path.exists(cmd):
+        cmd = '/etc/rc.d/init.d/mit'
+    if not os.path.exists(cmd):
+        cmd = mit.getRunDir() + '/scripts/init.d/mit'
+    
+    import subprocess
+    restart_cmd = f'nohup bash -c "sleep 1 && {cmd} restart" > /dev/null 2>&1 &'
+    subprocess.Popen(restart_cmd, shell=True, start_new_session=True)
+
+
+def execShell(cmdstring, cwd=None, timeout=None, shell=True):
+    try:
+        global logPath
+        import shlex
+        import datetime
+        import subprocess
+
+        if timeout:
+            end_time = datetime.datetime.now() + datetime.timedelta(seconds=timeout)
+
+        cmd = cmdstring + ' > ' + logPath + ' 2>&1'
+        sub = subprocess.Popen(
+            cmd, cwd=cwd, stdin=subprocess.PIPE, shell=shell, bufsize=4096)
+        while sub.poll() is None:
+            time.sleep(0.1)
+
+        data = sub.communicate()
+        if isinstance(data[0], bytes):
+            t1 = str(data[0], encoding='utf-8')
+
+        if isinstance(data[1], bytes):
+            t2 = str(data[1], encoding='utf-8')
+        return (t1, t2)
+    except Exception as e:
+        return (None, None)
+
+
+def downloadFile(url, filename):
+    try:
+        import urllib
+        import socket
+        socket.setdefaulttimeout(300)
+
+        headers = (
+            'User-Agent', 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/87.0.4280.88 Safari/537.36')
+        opener = urllib.request.build_opener()
+        opener.addheaders = [headers]
+        urllib.request.install_opener(opener)
+
+        urllib.request.urlretrieve(
+            url, filename=filename, reporthook=downloadHook)
+
+        if not mit.isAppleSystem():
+            os.system('chown www.www ' + filename)
+
+        writeLogs('done')
+    except Exception as e:
+        writeLogs(str(e))
+
+
+def downloadHook(count, blockSize, totalSize):
+    global pre
+    used = count * blockSize
+    pre1 = int((100.0 * used / totalSize))
+    if pre == (100 - pre1):
+        return
+    speed = {'total': totalSize, 'used': used, 'pre': pre1}
+    writeLogs(json.dumps(speed))
+
+
+def writeLogs(logMsg):
+    try:
+        global logPath
+        fp = open(logPath, 'w+')
+        fp.write(logMsg)
+        fp.close()
+    except:
+        pass
+
+
+def runTask():
+    global isTask
+    try:
+        if os.path.exists(isTask):
+            sql = db.Sql()
+            sql.table('tasks').where(
+                "status=?", ('-1',)).setField('status', '0')
+            taskArr = sql.table('tasks').where("status=?", ('0',)).field(
+                'id,type,execstr').order("id asc").select()
+            for value in taskArr:
+                start = int(time.time())
+                if not sql.table('tasks').where("id=?", (value['id'],)).count():
+                    continue
+                sql.table('tasks').where("id=?", (value['id'],)).save(
+                    'status,start', ('-1', start))
+                if value['type'] == 'download':
+                    argv = value['execstr'].split('|mit|')
+                    downloadFile(argv[0], argv[1])
+                elif value['type'] == 'execshell':
+                    execShell(value['execstr'])
+                end = int(time.time())
+                sql.table('tasks').where("id=?", (value['id'],)).save(
+                    'status,end', ('1', end))
+
+                if(sql.table('tasks').where("status=?", ('0')).count() < 1):
+                    os.system('rm -f ' + isTask)
+
+            sql.close()
+    except Exception as e:
+        print(str(e))
+
+    siteEdate()
+
+
+def startTask():
+    try:
+        while True:
+            runTask()
+            time.sleep(2)
+    except Exception as e:
+        time.sleep(60)
+        startTask()
+
+
+def siteEdate():
+    global oldEdate
+    try:
+        if not oldEdate:
+            oldEdate = mit.readFile('data/edate.pl')
+        if not oldEdate:
+            oldEdate = '0000-00-00'
+        mEdate = time.strftime('%Y-%m-%d', time.localtime())
+        if oldEdate == mEdate:
+            return False
+        edateSites = mit.M('sites').where('edate>? AND edate<? AND (status=? OR status=?)',
+                                         ('0000-00-00', mEdate, 1, 'running')).field('id,name').select()
+        import site_api
+        for site in edateSites:
+            site_api.site_api().stop(site['id'], site['name'])
+        oldEdate = mEdate
+        mit.writeFile('data/edate.pl', mEdate)
+    except Exception as e:
+        print(str(e))
+
+
+def systemTask():
+    try:
+        import system_api
+        import psutil
+        sm = system_api.system_api()
+        filename = 'data/control.conf'
+
+        sql = db.Sql().dbfile('system')
+        csql = mit.readFile('data/sql/system.sql')
+        csql_list = csql.split(';')
+        for index in range(len(csql_list)):
+            sql.execute(csql_list[index], ())
+
+        cpuIo = cpu = {}
+        cpuCount = psutil.cpu_count()
+        used = count = 0
+        reloadNum = 0
+        network_up = network_down = diskio_1 = diskio_2 = networkInfo = cpuInfo = diskInfo = None
+        while True:
+            if not os.path.exists(filename):
+                time.sleep(10)
+                continue
+
+            day = 30
+            try:
+                day = int(mit.readFile(filename))
+                if day < 1:
+                    time.sleep(10)
+                    continue
+            except:
+                day = 30
+
+            tmp = {}
+            tmp['used'] = psutil.cpu_percent(interval=1)
+
+            if tmp['used'] > 80:
+                panel_title = mit.getConfig('title')
+                ip = mit.getHostAddr()
+                now_time = mit.getDateFromNow()
+                msg = now_time + '|Node [' + panel_title + ':' + ip + \
+                    '] under high load [' + str(tmp['used']) + '], Please check the reason!'
+                mit.notifyMessage(msg, 'Panel monitoring', 600)
+
+            if not cpuInfo:
+                tmp['mem'] = sm.getMemUsed()
+                cpuInfo = tmp
+
+            if cpuInfo['used'] < tmp['used']:
+                tmp['mem'] = sm.getMemUsed()
+                cpuInfo = tmp
+
+            networkIo = sm.psutilNetIoCounters()
+            if not network_up:
+                network_up = networkIo[0]
+                network_down = networkIo[1]
+            tmp = {}
+            tmp['upTotal'] = networkIo[0]
+            tmp['downTotal'] = networkIo[1]
+            tmp['up'] = round(float((networkIo[0] - network_up) / 1024), 2)
+            tmp['down'] = round(float((networkIo[1] - network_down) / 1024), 2)
+            tmp['downPackets'] = networkIo[3]
+            tmp['upPackets'] = networkIo[2]
+
+            network_up = networkIo[0]
+            network_down = networkIo[1]
+
+            if not networkInfo:
+                networkInfo = tmp
+            if (tmp['up'] + tmp['down']) > (networkInfo['up'] + networkInfo['down']):
+                networkInfo = tmp
+            # if os.path.exists('/proc/diskstats'):
+            diskio_2 = psutil.disk_io_counters()
+            if not diskio_1:
+                diskio_1 = diskio_2
+            tmp = {}
+            tmp['read_count'] = diskio_2.read_count - diskio_1.read_count
+            tmp['write_count'] = diskio_2.write_count - diskio_1.write_count
+            tmp['read_bytes'] = diskio_2.read_bytes - diskio_1.read_bytes
+            tmp['write_bytes'] = diskio_2.write_bytes - diskio_1.write_bytes
+            tmp['read_time'] = diskio_2.read_time - diskio_1.read_time
+            tmp['write_time'] = diskio_2.write_time - diskio_1.write_time
+
+            if not diskInfo:
+                diskInfo = tmp
+            else:
+                diskInfo['read_count'] += tmp['read_count']
+                diskInfo['write_count'] += tmp['write_count']
+                diskInfo['read_bytes'] += tmp['read_bytes']
+                diskInfo['write_bytes'] += tmp['write_bytes']
+                diskInfo['read_time'] += tmp['read_time']
+                diskInfo['write_time'] += tmp['write_time']
+            diskio_1 = diskio_2
+
+            # print diskInfo
+            if count >= 12:
+                try:
+                    addtime = int(time.time())
+                    deltime = addtime - (day * 86400)
+
+                    data = (cpuInfo['used'], cpuInfo['mem'], addtime)
+                    sql.table('cpuio').add('pro,mem,addtime', data)
+                    sql.table('cpuio').where("addtime<?", (deltime,)).delete()
+
+                    data = (networkInfo['up'] / 5, networkInfo['down'] / 5, networkInfo['upTotal'], networkInfo[
+                        'downTotal'], networkInfo['downPackets'], networkInfo['upPackets'], addtime)
+                    sql.table('network').add(
+                        'up,down,total_up,total_down,down_packets,up_packets,addtime', data)
+                    sql.table('network').where(
+                        "addtime<?", (deltime,)).delete()
+                    # if os.path.exists('/proc/diskstats'):
+                    data = (diskInfo['read_count'], diskInfo['write_count'], diskInfo['read_bytes'], diskInfo[
+                        'write_bytes'], diskInfo['read_time'], diskInfo['write_time'], addtime)
+                    sql.table('diskio').add(
+                        'read_count,write_count,read_bytes,write_bytes,read_time,write_time,addtime', data)
+                    sql.table('diskio').where(
+                        "addtime<?", (deltime,)).delete()
+
+                    # LoadAverage
+                    load_average = sm.getLoadAverage()
+                    lpro = round(
+                        (load_average['one'] / load_average['max']) * 100, 2)
+                    if lpro > 100:
+                        lpro = 100
+                    sql.table('load_average').add('pro,one,five,fifteen,addtime', (lpro, load_average[
+                        'one'], load_average['five'], load_average['fifteen'], addtime))
+
+                    lpro = None
+                    load_average = None
+                    cpuInfo = None
+                    networkInfo = None
+                    diskInfo = None
+                    count = 0
+                    reloadNum += 1
+                    if reloadNum > 1440:
+                        reloadNum = 0
+                        mit.writeFile('logs/sys_interrupt.pl',
+                                     "reload num:" + str(reloadNum))
+                        restartMit()
+                except Exception as ex:
+                    print(str(ex))
+                    mit.writeFile('logs/sys_interrupt.pl', str(ex))
+
+            del(tmp)
+            time.sleep(5)
+            count += 1
+    except Exception as ex:
+        print(str(ex))
+        mit.writeFile('logs/sys_interrupt.pl', str(ex))
+
+        restartMit()
+
+        time.sleep(30)
+        systemTask()
+
+
+# -------------------------------------- PHP monitoring start --------------------------------------------- #
+# 502 error checking thread
+def check502Task():
+    try:
+        while True:
+            if os.path.exists(mit.getRunDir() + '/data/502Task.pl'):
+                check502()
+            time.sleep(30)
+    except:
+        time.sleep(30)
+        check502Task()
+
+
+def check502():
+    try:
+        verlist = ['56', '70', '71', '72', '73', '74', '80', '81', '82', '83', '84', '85']
+        for ver in verlist:
+            sdir = mit.getServerDir()
+            php_path = sdir + '/php/' + ver + '/sbin/php-fpm'
+            if not os.path.exists(php_path):
+                continue
+            if checkPHPVersion(ver):
+                continue
+            if startPHPVersion(ver):
+                print('502 error checking thread-' + ver + ' exception handling, automatically fixed!')
+                mit.writeLog('PHP daemon', 'PHP-' + ver + 'handling exception detected, has been automatically fixed!')
+    except Exception as e:
+        print(str(e))
+
+
+def startPHPVersion(version):
+    sdir = mit.getServerDir()
+    try:
+
+        # system
+        phpService = mit.systemdCfgDir() + '/php' + version + '.service'
+        if os.path.exists(phpService):
+            mit.execShell("systemctl restart php" + version)
+            if checkPHPVersion(version):
+                return True
+
+        # initd
+        fpm = sdir + '/php/init.d/php' + version
+        php_path = sdir + '/php/' + version + '/sbin/php-fpm'
+        if not os.path.exists(php_path):
+            if os.path.exists(fpm):
+                os.remove(fpm)
+            return False
+
+        if not os.path.exists(fpm):
+            return False
+
+        os.system(fpm + ' reload')
+        if checkPHPVersion(version):
+            return True
+
+        cgi = '/tmp/php-cgi-' + version + '.sock'
+        pid = sdir + '/php/' + version + '/var/run/php-fpm.pid'
+        data = mit.execShell("ps -ef | grep php/" + version +
+                            " | grep -v grep|grep -v python |awk '{print $2}'")
+        if data[0] != '':
+            os.system("ps -ef | grep php/" + version +
+                      " | grep -v grep|grep -v python |awk '{print $2}' | xargs kill ")
+        time.sleep(0.5)
+        if not os.path.exists(cgi):
+            os.system('rm -f ' + cgi)
+        if not os.path.exists(pid):
+            os.system('rm -f ' + pid)
+        os.system(fpm + ' start')
+        if checkPHPVersion(version):
+            return True
+
+        if os.path.exists(cgi):
+            return True
+    except Exception as e:
+        print(str(e))
+        return True
+
+
+def getFpmConfFile(version):
+    return mit.getServerDir() + '/php/' + version + '/etc/php-fpm.d/www.conf'
+
+
+def getFpmAddress(version):
+    fpm_address = '/tmp/php-cgi-{}.sock'.format(version)
+    php_fpm_file = getFpmConfFile(version)
+    try:
+        content = readFile(php_fpm_file)
+        tmp = re.findall(r"listen\s*=\s*(.+)", content)
+        if not tmp:
+            return fpm_address
+        if tmp[0].find('sock') != -1:
+            return fpm_address
+        if tmp[0].find(':') != -1:
+            listen_tmp = tmp[0].split(':')
+            if bind:
+                fpm_address = (listen_tmp[0], int(listen_tmp[1]))
+            else:
+                fpm_address = ('127.0.0.1', int(listen_tmp[1]))
+        else:
+            fpm_address = ('127.0.0.1', int(tmp[0]))
+        return fpm_address
+    except:
+        return fpm_address
+
+
+def checkPHPVersion(version):
+    try:
+        sock = getFpmAddress(version)
+        data = mit.requestFcgiPHP(sock, '/phpfpm_status_' + version + '?json')
+        result = str(data, encoding='utf-8')
+    except Exception as e:
+        result = 'Bad Gateway'
+
+    # print(version,result)
+    if result.find('Bad Gateway') != -1:
+        return False
+    if result.find('HTTP Error 404: Not Found') != -1:
+        return False
+
+    if result.find('Connection refused') != -1:
+        global isTask
+        if os.path.exists(isTask):
+            isStatus = mit.readFile(isTask)
+            if isStatus == 'True':
+                return True
+
+        mit.opWeb('reload')
+    return True
+
+# --------------------------------------PHP monitoring end--------------------------------------------- #
+
+
+# --------------------------------------OpenResty Auto Restart Start --------------------------------------------- #
+# After solving acme.sh renewal, it did not take effect.
+def openrestyAutoRestart():
+    try:
+        while True:
+            # reload whichever web server is active (nginx or apache)
+            mit.opWeb('reload')
+            time.sleep(86400)
+    except Exception as e:
+        print(str(e))
+        time.sleep(86400)
+
+# --------------------------------------OpenResty Auto Restart End   --------------------------------------------- #
+
+
+# --------------------------------------Service Watchdog Start --------------------------------------------- #
+# Restarts crashed web server / MySQL / MariaDB / PHP-FPM and warns about
+# full disks and memory, see class/core/watchdog.py
+def serviceWatchdog():
+    import watchdog
+    # give the services time to come up after a boot
+    time.sleep(120)
+    while True:
+        try:
+            watchdog.run()
+        except Exception as e:
+            mit.writeFileLog(mit.getTracebackInfo())
+        time.sleep(60)
+
+# --------------------------------------Service Watchdog End   --------------------------------------------- #
+
+
+# --------------------------------------Panel Restart Start   --------------------------------------------- #
+def restartPanelService():
+    restartTip = 'data/restart.pl'
+    while True:
+        if os.path.exists(restartTip):
+            os.remove(restartTip)
+            cmd = '/etc/init.d/mit'
+            if not os.path.exists(cmd):
+                cmd = '/etc/rc.d/init.d/mit'
+            if not os.path.exists(cmd):
+                cmd = mit.getRunDir() + '/scripts/init.d/mit'
+            
+            import subprocess
+            restart_cmd = f'nohup bash -c "sleep 1 && {cmd} restart" > /dev/null 2>&1 &'
+            subprocess.Popen(restart_cmd, shell=True, start_new_session=True)
+        time.sleep(1)
+# --------------------------------------Panel Restart End   --------------------------------------------- #
+
+
+def setDaemon(t):
+    if sys.version_info.major == 3 and sys.version_info.minor >= 10:
+        t.daemon = True
+    else:
+        t.setDaemon(True)
+    return t
+
+if __name__ == "__main__":
+
+    sysTask = threading.Thread(target=systemTask)
+    sysTask = setDaemon(sysTask)
+    sysTask.start()
+
+    php502 = threading.Thread(target=check502Task)
+    php502 = setDaemon(php502)
+    php502.start()
+
+    # OpenResty Auto Restart Start
+    oar = threading.Thread(target=openrestyAutoRestart)
+    oar = setDaemon(oar)
+    oar.start()
+
+    # Service Watchdog
+    swd = threading.Thread(target=serviceWatchdog)
+    swd = setDaemon(swd)
+    swd.start()
+
+    # Panel Restart Start
+    rps = threading.Thread(target=restartPanelService)
+    rps = setDaemon(rps)
+    rps.start()
+
+    startTask()

@@ -1,0 +1,19 @@
+{
+	"hook":["backup"],
+	"sort":3,
+	"title":"Google Drive",
+	"tip":"lib",
+	"name":"gdrive",
+	"type":"Ekstensi",
+	"ps":"Cadangkan data Anda ke Google Drive",
+	"versions":"2.0",
+	"shell":"install.sh",
+	"checks": "server/gdrive",
+	"path":"server/gdrive",
+	"author":"google",
+	"home":"https://drive.google.com/",
+	"api_doc":"https://developers.google.com/drive/api/guides/about-sdk?hl=zh_CN",
+	"api_doc2":"https://developers.google.cn/drive/api/reference/rest/v3/comments/list?hl=zh-cn",
+	"date":"2022-06-26",
+	"pid":"5"
+}
