@@ -6,6 +6,7 @@ Kelola website, database, PHP, SSL, file, cron, backup, dan firewall langsung da
 - **Web server** (pilih salah satu): Nginx (OpenResty) atau Apache 2.4
 - **PHP**: 5.6, 7.0 – 7.4, 8.0 – 8.5 (beberapa versi sekaligus, pilih per situs)
 - **Database**: MySQL 5.7, 8.0, 8.2, 8.3, 8.4, 9.0 – 9.4 / MariaDB 10.6 – 12.1
+- **Cache**: Redis 7.2, 7.4, 8.0, 8.2, 8.4 (patch terbaru diambil otomatis)
 - **Sistem**: Ubuntu, Debian, **Linux Mint**, Pop!_OS, Zorin, elementary, CentOS, AlmaLinux,
   Rocky, Fedora, openSUSE, Arch — server maupun desktop (GUI) — dan **Windows 10/11 lewat WSL2**
 
@@ -153,7 +154,7 @@ wsl -d Ubuntu -u root -- mit restart
    - web server: **Nginx (OpenResty)** *atau* **Apache**,
    - **PHP** (versi yang dibutuhkan),
    - **MySQL** atau **MariaDB**,
-   - opsional: phpMyAdmin, Google Drive, Clone Server, dll.
+   - opsional: Redis, phpMyAdmin, Google Drive, Clone Server, dll.
 4. Ganti username dan password panel di menu **Pengaturan**.
 
 ---
@@ -234,6 +235,7 @@ Layanan:
 systemctl [start|stop|restart|status] openresty     # Nginx
 systemctl [start|stop|restart|status] apache
 systemctl [start|stop|restart|status] mysql         # atau mariadb
+systemctl [start|stop|restart|status] redis
 systemctl [start|stop|restart|status] php74         # php56 ... php85
 tail -f /opt/mit/server/panel/logs/watchdog.log
 ```

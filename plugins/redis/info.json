@@ -1,0 +1,17 @@
+{
+	"sort": 3,
+	"title": "Redis",
+	"tip": "soft",
+	"name": "redis",
+	"type": "Data software",
+	"ps": "Redis: database key-value in-memory untuk cache, session, dan antrian",
+	"versions": ["7.2", "7.4", "8.0", "8.2", "8.4"],
+	"shell": "install.sh",
+	"checks": "server/redis",
+	"path": "server/redis",
+	"display": 1,
+	"author": "redis",
+	"home": "https://redis.io/",
+	"date": "2026-09-27",
+	"pid": "2"
+}
