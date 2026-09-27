@@ -17,8 +17,9 @@ Kelola website, database, PHP, SSL, file, cron, backup, dan firewall langsung da
 3. [Instalasi di Windows](#instalasi-di-windows)
 4. [Setelah instalasi](#setelah-instalasi)
 5. [Fitur](#fitur)
-6. [Perintah](#perintah)
-7. [Update dan uninstall](#update-dan-uninstall)
+6. [Panduan](#panduan)
+7. [Perintah](#perintah)
+8. [Update dan uninstall](#update-dan-uninstall)
 
 ---
 
@@ -197,6 +198,23 @@ Tiap menit memeriksa web server, MySQL/MariaDB, dan PHP-FPM. Layanan yang crash
 (misalnya dimatikan kernel karena RAM habis) dinyalakan ulang, maksimal 3 kali per jam.
 Peringatan disk > 90% dan RAM > 95%. Semua kejadian masuk `logs/watchdog.log`, log panel,
 dan notifikasi Telegram (bila diatur). Layanan yang sengaja dihentikan tidak disentuh.
+
+---
+
+## Panduan
+
+| Panduan | Isi |
+| --- | --- |
+| [Clone Server](docs/clone-server.md) | Menyalin seluruh server ke server baru lewat SSH, sekali jalan |
+| [Master–Slave](docs/master-slave.md) | Replikasi database MySQL/MariaDB terus-menerus ke server cadangan |
+| [Server utama + cadangan](docs/server-cadangan.md) | Menggabungkan Clone Server, Master–Slave, Rsyncd, dan backup Google Drive, termasuk langkah pindah ke server cadangan bila server utama rusak |
+
+**Clone atau Master–Slave?** Clone = salinan seluruh server **sekali** (pindah server,
+menyiapkan server cadangan). Master–Slave = **database** tersalin **terus-menerus**.
+Untuk server cadangan: clone sekali, lalu aktifkan Master–Slave (database) dan Rsyncd (file).
+
+Ringkasan panduan juga ada di dalam panel: plugin **Clone Server → Panduan** dan
+**MySQL / MariaDB → Panduan Master-Slave**.
 
 ---
 

@@ -2455,3 +2455,38 @@ function masterOrSlaveConf(version = '') {
     }
     getMasterStatus();
 }
+
+
+// ------------------------------ in-panel guide ------------------------------
+function msGuide() {
+    var docs = 'https://github.com/tauviec/MIT-Panel/blob/main/docs/';
+    var step = function (items) {
+        return '<ol style="padding-left:18px;line-height:22px;margin-bottom:12px">' + items.map(function (t) { return '<li>' + t + '</li>'; }).join('') + '</ol>';
+    };
+    var con = '<div style="line-height:22px">'
+        + '<p>Replikasi menyalin setiap perubahan database dari <b>master</b> ke <b>slave</b> secara terus-menerus. '
+        + 'Hanya database, bukan file situs. <b>Bukan pengganti backup</b>: data yang terhapus di master ikut terhapus di slave.</p>'
+        + '<p style="margin-top:8px"><b>Syarat:</b> engine dan versi database sama di kedua server; slave bisa menjangkau port 3306 master '
+        + '(buka hanya untuk IP slave); mode (GTID/Classic) sama di kedua server.</p>'
+        + '<p style="margin-top:10px"><b>A. Di server MASTER</b></p>'
+        + step([
+            'Menu <b>Master-Slave</b>, pilih mode <b>GTID</b> (disarankan) atau Classic.',
+            '<b>Master Config</b>: klik sampai <b>Started</b>.',
+            'Klik <b>Join</b> pada database yang direplikasi. <span style="color:#d9534f">Setiap Join me-restart MySQL master</span>, lakukan di luar jam layanan.',
+            '<b>Sync account list</b> → <b>Add sync account</b>: username, password, IP slave.',
+            'Salin <b>Sync command</b> akun tersebut.'
+        ])
+        + '<p><b>B. Di server SLAVE</b></p>'
+        + step([
+            'Menu <b>Master-Slave</b>, pilih mode yang sama dengan master.',
+            '<b>Slave Config</b>: klik sampai <b>Started</b>.',
+            '<b>Sync configuration</b> → <b>Sync account</b>: isi IP master, akun, password, tempel CMD.',
+            'Klik <b>Initialization</b>, lalu <b>Full sync</b> dan tunggu 100%.',
+            'Status IO dan SQL harus berjalan tanpa error.',
+            'Disarankan: tambahkan <code>read_only = 1</code> (dan <code>super_read_only = 1</code> di MySQL) di konfigurasi slave agar aplikasi tidak menulis ke slave.'
+        ])
+        + '<p>Panduan lengkap: <a class="btlink" target="_blank" href="' + docs + 'master-slave.md">Master-Slave</a> · '
+        + '<a class="btlink" target="_blank" href="' + docs + 'server-cadangan.md">Server utama + cadangan</a></p>'
+        + '</div>';
+    $(".soft-man-con").html(con);
+}

@@ -247,3 +247,31 @@ function cloneOpenTerm() {
         open({ host: t.host, port: t.port || '22', username: t.user || 'root', password: t.password, type: '0', id: 'clone_term' });
     }
 }
+
+
+// ------------------------------ in-panel guide ------------------------------
+function cloneGuide() {
+    cloneCloseTerm();
+    var docs = 'https://github.com/tauviec/MIT-Panel/blob/main/docs/';
+    var con = '<div style="line-height:22px">'
+        + '<p><b>Clone Server</b> menyalin seluruh server ini ke server lain <b>sekali jalan</b>: MIT Panel, software dengan versi sama, '
+        + 'situs, vhost, SSL, database beserta user-nya. Setelah itu kedua server berjalan sendiri-sendiri.</p>'
+        + '<ol style="padding-left:18px;margin:10px 0">'
+        + '<li>Siapkan server tujuan: Linux baru, login SSH <b>root</b>, disk cukup.</li>'
+        + '<li>Tab <b>Clone Server</b>: isi IP, port SSH, user, password atau path private key.</li>'
+        + '<li>Klik <b>Tes Koneksi</b> dan periksa daftar software (sudah ada / akan dipasang).</li>'
+        + '<li>Klik <b>Mulai Clone</b>, pantau di tab <b>Progres &amp; Log</b>. Kompilasi software bisa 10-60 menit per software; halaman boleh ditutup.</li>'
+        + '<li>Setelah <b>Selesai</b>, cek di tab <b>Terminal SSH</b> → <b>Status layanan</b>.</li>'
+        + '<li>Uji situs lewat file <i>hosts</i> komputer Anda, lalu ubah DNS ke IP tujuan.</li>'
+        + '</ol>'
+        + '<p><b>Tidak ikut tersalin:</b> jadwal Cron, firewall, file di luar folder situs.</p>'
+        + '<p style="margin-top:8px"><b>Clone atau Master-Slave?</b> Clone = salinan sekali (pindah server / siapkan server cadangan). '
+        + 'Master-Slave = database tersalin terus-menerus (menu MySQL/MariaDB → Master-Slave). '
+        + 'Untuk server cadangan: clone sekali, lalu aktifkan Master-Slave dan Rsyncd untuk file.</p>'
+        + '<p style="margin-top:8px">Panduan lengkap: '
+        + '<a class="btlink" target="_blank" href="' + docs + 'clone-server.md">Clone Server</a> · '
+        + '<a class="btlink" target="_blank" href="' + docs + 'master-slave.md">Master-Slave</a> · '
+        + '<a class="btlink" target="_blank" href="' + docs + 'server-cadangan.md">Server utama + cadangan</a></p>'
+        + '</div>';
+    $(".soft-man-con").html(con);
+}
