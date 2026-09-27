@@ -117,10 +117,21 @@ if ($LASTEXITCODE -ne 0) {
 Ok "MIT Panel terpasang"
 
 # --- keep WSL (and the panel) running after login ---------------------------
-# WSL stops the VM when no wsl.exe process is left, so a hidden task holds it open.
+# WSL stops the VM when no wsl.exe process is left, so a task holds it open.
+# wsl.exe started directly gets a visible console, and closing that window kills
+# the panel's task queue (and any install it is running); a VBScript launcher
+# starts it with no window at all.
 Info "Membuat autostart saat login Windows..."
 $taskName = "MIT Panel (WSL)"
-$action = New-ScheduledTaskAction -Execute "wsl.exe" -Argument "-d $Distro -u root -- bash -c `"/etc/init.d/mit start >/dev/null 2>&1; exec sleep infinity`""
+$launcherDir = Join-Path $env:ProgramData "MIT-Panel"
+New-Item -ItemType Directory -Force -Path $launcherDir | Out-Null
+$launcher = Join-Path $launcherDir "mit-wsl.vbs"
+$vbs = @'
+' MIT Panel: keep WSL and the panel running, without a console window
+CreateObject("WScript.Shell").Run "wsl.exe -d __DISTRO__ -u root -- bash -c ""/etc/init.d/mit start >/dev/null 2>&1; exec sleep infinity""", 0, False
+'@
+$vbs.Replace("__DISTRO__", $Distro) | Set-Content -Path $launcher -Encoding ASCII
+$action = New-ScheduledTaskAction -Execute "wscript.exe" -Argument "//B //NoLogo `"$launcher`""
 $trigger = New-ScheduledTaskTrigger -AtLogOn
 $settings = New-ScheduledTaskSettingsSet -Hidden -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
 Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -RunLevel Highest -Force | Out-Null

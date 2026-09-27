@@ -62,7 +62,13 @@ mit_start_task()
     isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
     if [ "$isStart" == '' ];then
         echo -e "starting mit-tasks... \c"
-        cd $mit_path && python3 task.py >> ${mit_path}/logs/task.log 2>&1 &
+        # own session: closing the terminal (or WSL console) that started it must
+        # not kill the task queue together with a running install
+        if command -v setsid >/dev/null 2>&1; then
+            cd $mit_path && setsid nohup python3 task.py >> ${mit_path}/logs/task.log 2>&1 < /dev/null &
+        else
+            cd $mit_path && nohup python3 task.py >> ${mit_path}/logs/task.log 2>&1 < /dev/null &
+        fi
         sleep 0.3
         isStart=$(ps aux |grep 'task.py'|grep -v grep|awk '{print $2}')
         if [ "$isStart" == '' ];then
