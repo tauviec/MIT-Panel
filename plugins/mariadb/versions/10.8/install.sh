@@ -66,6 +66,8 @@ Install_app()
 
 	if [ ! -d $serverPath/mariadb ];then
 		cd ${mariadbDir}/mariadb-${MY_VER} && cmake \
+		-DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+		-DPLUGIN_CONNECT=NO \
 		-DCMAKE_INSTALL_PREFIX=$serverPath/mariadb \
 		-DMYSQL_DATADIR=$serverPath/mariadb/data/ \
 		-DMYSQL_USER=mysql \
